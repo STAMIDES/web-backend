@@ -1,0 +1,14 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "mides",
+            "database": "mides",
+            "username": "fernando",
+            "password": "123123123"
+        }
+    ]
+}

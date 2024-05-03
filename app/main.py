@@ -1,0 +1,18 @@
+from fastapi import FastAPI # type: ignore
+import app.database as db
+import app.routes as r
+from app.database import Base
+
+app = FastAPI(debug = True)
+
+Base.metadata.create_all(bind=db.engine) # En producción hay que sacar esto de acá
+app.include_router(r.personas_router, prefix="/personas")
+app.include_router(r.personas_caracteristicas_router, prefix="/personas_caracteristicas")
+app.include_router(r.pedidos_router, prefix="/pedidos")
+app.include_router(r.vehiculos_router, prefix="/vehiculos")
+app.include_router(r.vehiculos_caracteristicas_router, prefix="/vehiculos_caracteristicas")
+app.include_router(r.choferes_router, prefix="/choferes")
+app.include_router(r.lugares_comunes_router, prefix="/lugares_comunes")
+app.include_router(r.planificaciones_router, prefix="/planificaciones")
+app.include_router(r.turnos_router, prefix="/turnos")
+app.include_router(r.rutas_router, prefix="/rutas")

@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  debug:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command:
+      - "sh"
+      - "-c"
+      - |
+        pip install debugpy \
+        && python3 -m debugpy --wait-for-client --listen 0.0.0.0:12345 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - 8001:8001
+      - 12345:12345
+    depends_on:
+      - db   
+    volumes:
+      - ./app:/app
+    environment:
+      - POSTGRES_HOST=db 
+      - WATCHFILES_FORCE_POLLING=true   # Configura la variable de entorno para la conexión a PostgreSQL
+    networks:
+      - backend-network
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db      # Si tu aplicación depende de PostgreSQL
+    environment:
+      - POSTGRES_HOST=db   # Configura la variable de entorno para la conexión a PostgreSQL
+    networks:
+      - backend-network
+    volumes:
+      - ./app:/app
+
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: fernando
+      POSTGRES_PASSWORD: 123123123
+      POSTGRES_DB: mides
+    ports:
+      - "5432:5432"
+    networks:
+      - backend-network
+    volumes:
+      - db-volume:/db
+
+networks:
+  backend-network:
+    driver: bridge
+
+volumes:
+  db-volume:

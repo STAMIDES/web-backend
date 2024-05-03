@@ -1,0 +1,46 @@
+{
+  "documento": 46904676,
+  "nombre": "Fernando",
+  "apellido": "Penadés",
+  "telefono": "092495849",
+  "observaciones": "Soy el priemero!",
+  "tipo_persona": "cliente"
+}
+
+{
+  "documento": 46195740,
+  "nombre": "Gonzalo",
+  "apellido": "Niell",
+  "telefono": "098228040",
+  "observaciones": "Bueeena",
+  "tipo_persona": "Centro de salud o rehabilitación"
+}
+
+{
+  "id_pedido": null,
+  "usuario_documento": 46904676,
+  "direccion_origen": "18 de Julio 1532",
+  "direccion_destino": "Av. Italia 2850",
+  "latitud_origen": -34.90440692493003,
+  "latitud_destino": -56.18256187118188,
+  "longitud_origen": -34.890683940187294,
+  "longitud_destino": -56.1519692765039,
+  "ventana_origen_inicio": null,
+  "ventana_origen_fin": null,
+  "ventana_destino_inicio": "2024-04-30T10:30",
+  "ventana_destino_fin": "2024-04-30T12:15",
+  "hora_ingresado": "2024-04-30T21:20:14.580Z",
+  "prioridad": 1,
+  "acompañante": true,
+  "observaciones": ""
+}
+
+{
+  "id_vehiculo": null,
+  "matricula": "SAF 6254",
+  "descripcion": "Merecedes grandes",
+  "capacidad_convencional": 10,
+  "capacidad_silla_de_ruedas": 2,
+  "disponibilidad": true,
+  "observaciones": ""
+}
