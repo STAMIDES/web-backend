@@ -10,7 +10,7 @@ services:
       - "-c"
       - |
         pip install debugpy \
-        && python3 -m debugpy --wait-for-client --listen 0.0.0.0:12345 -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+        && python3 -m debugpy --wait-for-client --listen 0.0.0.0:12345 -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
     ports:
       - 8001:8001
       - 12345:12345
@@ -20,7 +20,7 @@ services:
       - ./app:/app
     environment:
       - POSTGRES_HOST=db 
-      - WATCHFILES_FORCE_POLLING=true   # Configura la variable de entorno para la conexión a PostgreSQL
+      - WATCHFILES_FORCE_POLLING=true
     networks:
       - backend-network
 
@@ -40,6 +40,9 @@ services:
   db:
     image: postgres:latest
     restart: always
+    build:
+      context: .
+      dockerfile: ./Dockerfile-db
     environment:
       POSTGRES_USER: fernando
       POSTGRES_PASSWORD: 123123123

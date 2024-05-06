@@ -1,3 +1,13 @@
+usuarios: [{
+  "id_usuario": null,
+  "nombre_usuario": "fernandopenades",
+  "hashed_password": "contra1234",
+  "email": "fernando.penades@gmail.com",
+  "activo": false,
+  "token": ""
+}, 
+]
+
 {
   "documento": 46904676,
   "nombre": "Fernando",
@@ -5,8 +15,7 @@
   "telefono": "092495849",
   "observaciones": "Soy el priemero!",
   "tipo_persona": "cliente"
-}
-
+},
 {
   "documento": 46195740,
   "nombre": "Gonzalo",

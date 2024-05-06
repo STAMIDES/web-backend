@@ -6,3 +6,5 @@ sqlalchemy
 psycopg2-binary
 geoalchemy2
 shapely
+pyjwt
+passlib[bcrypt]

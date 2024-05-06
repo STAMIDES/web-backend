@@ -1,7 +1,7 @@
 from fastapi import FastAPI # type: ignore
-import app.database as db
-import app.routes as r
-from app.database import Base
+import database as db
+import routes as r
+from database import Base
 
 app = FastAPI(debug = True)
 
@@ -16,3 +16,6 @@ app.include_router(r.lugares_comunes_router, prefix="/lugares_comunes")
 app.include_router(r.planificaciones_router, prefix="/planificaciones")
 app.include_router(r.turnos_router, prefix="/turnos")
 app.include_router(r.rutas_router, prefix="/rutas")
+app.include_router(r.visitas_router, prefix="/visitas")
+app.include_router(r.usuarios_router, prefix="/usuarios")
+

@@ -1,8 +1,16 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field # type: ignore
 from shapely.geometry import LineString # type: ignore
 from datetime import datetime
 from enum import Enum
+
+class Usuarios(BaseModel):
+    id_usuario: Optional[int]
+    nombre_usuario: str
+    hashed_password: str
+    email: Optional[str]
+    activo: bool
+    token: Optional[str]
 
 class TipoPersona(str, Enum):
     particular = "Usuario particular"
@@ -84,6 +92,10 @@ class Turnos(BaseModel):
     hora_inicio: datetime
     hora_fin: datetime
 
+class Geometria(BaseModel):
+    type: str
+    coordinates: List[List[float]]
+
 class Rutas(BaseModel):
     id_ruta: Optional[int]
     id_turno: int
@@ -91,5 +103,25 @@ class Rutas(BaseModel):
     id_chofer: int
     hora_salida: datetime
     hora_llegada: datetime
-    geometria: LineString
+    geometria: Geometria
     observaciones: Optional[str]
+
+class EstadoVisita(str, Enum):
+    pendiente = "Pendiente"
+    realizada = "Realizada"
+    cancelada = "Cancelada"
+
+class TipoItemVisita(str, Enum):
+    lugar_comun = "Lugar común"
+    pedido = "Pedido"
+
+class Visitas(BaseModel):
+    id_visita: Optional[int]
+    id_ruta: int
+    id_item: int
+    tipo_item: TipoItemVisita
+    hora_llegada: datetime
+    hora_salida: datetime
+    estado: EstadoVisita
+    observaciones: Optional[str]
+

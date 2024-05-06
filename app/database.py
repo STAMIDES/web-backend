@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, Column, ForeignKey,Integer, String, Float,
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
 from geoalchemy2 import Geometry # type: ignore
+import autenticacion as aut
 
 SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
 
@@ -17,6 +18,66 @@ def get_db():
         return db
     finally:
         db.close()
+
+# region Usuarios
+class Usuarios(Base):
+    __tablename__ = 'usuarios'
+
+    id_usuario = Column(Integer, primary_key=True, index=True)
+    nombre_usuario = Column(String, unique=True)
+    hashed_password = Column(String)
+    email = Column(String)
+    activo = Column(Boolean)
+    token = Column(String, nullable=True)
+
+def add_usuario_db(usuario):
+    with get_db() as db:
+        usuario.hashed_password = aut.get_password_hash(usuario.hashed_password)
+        usuario_obj = Usuarios(**usuario.dict())
+        db.add(usuario_obj)
+        db.commit()
+        db.refresh(usuario_obj)
+        return usuario_obj
+    
+def get_usuario_db(nombre_usuario):
+    with get_db() as db:
+        return db.query(Usuarios).filter(Usuarios.nombre_usuario == nombre_usuario).first()
+    
+def update_usuario_db(nombre_usuario, usuario):
+    with get_db() as db:
+        db.query(Usuarios).filter(Usuarios.nombre_usuario == nombre_usuario).update(usuario.dict())
+        db.commit()
+        return usuario
+
+def delete_usuario_db(nombre_usuario):
+    with get_db() as db:
+        db.query(Usuarios).filter(Usuarios.nombre_usuario == nombre_usuario).delete()
+        db.commit()
+        return {"message": f"Usuario con nombre de usuario {nombre_usuario} eliminado correctamente."}
+
+def login(username: str, password: str):
+    with get_db() as db:
+        user = db.query(Usuarios).filter(Usuarios.nombre_usuario == username).first()
+        if not user or not aut.verify_password(password, user.hashed_password):
+            return None
+        # Si el usuario y la contraseña son válidos, generamos un token JWT
+        access_token = aut.generate_token(user.nombre_usuario)
+        user.token = access_token
+        user.activo = True
+        db.commit()
+        return {"access_token": access_token}
+    
+def logout(username: str):
+    with get_db() as db:
+        user = db.query(Usuarios).filter(Usuarios.nombre_usuario == username).first()
+        if not user:
+            return None
+        user.token = None
+        user.activo = False
+        db.commit()
+        return {"message": f"Usuario {username} deslogueado correctamente."}
+
+# endregion
 
 # region Personas
 
@@ -404,5 +465,45 @@ def delete_ruta_db(id_ruta):
         db.query(Rutas).filter(Rutas.id_ruta == id_ruta).delete()
         db.commit()
         return {"message": f"Ruta con ID {id_ruta} eliminada correctamente."}
+    
+# endregion
+
+# region Visitas
+
+class Visitas(Base):
+    __tablename__ = 'visitas'
+
+    id_visita = Column(Integer, primary_key=True, index=True)
+    id_ruta = Column(Integer, ForeignKey('rutas.id_ruta'))
+    id_item = Column(Integer)
+    tipo_item = Column(String)
+    hora_llegada = Column(DateTime)
+    hora_salida = Column(DateTime)
+    estado = Column(String)
+    observaciones = Column(String)
+
+def add_visita_db(visita):
+    with get_db() as db:
+        visita_obj = Visitas(**visita.dict())
+        db.add(visita_obj)
+        db.commit()
+        db.refresh(visita_obj)
+        return visita_obj
+    
+def get_visita_db(id_visita):
+    with get_db() as db:
+        return db.query(Visitas).filter(Visitas.id_visita == id_visita).first()
+    
+def update_visita_db(id_visita, visita):
+    with get_db() as db:
+        db.query(Visitas).filter(Visitas.id_visita == id_visita).update(visita.dict())
+        db.commit()
+        return visita
+    
+def delete_visita_db(id_visita):
+    with get_db() as db:
+        db.query(Visitas).filter(Visitas.id_visita == id_visita).delete()
+        db.commit()
+        return {"message": f"Visita con ID {id_visita} eliminada correctamente."}
     
 # endregion

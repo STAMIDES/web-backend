@@ -1,9 +1,77 @@
 from fastapi import APIRouter, HTTPException # type: ignore
-from app.models import Pedidos, Personas, PersonasCaracteristicas, Vehiculos, LugaresComunes, Choferes, VehiculosCaracteristicas, Planificaciones, Turnos, Rutas
-import app.database as db
+from models import Pedidos, Personas, PersonasCaracteristicas, Vehiculos, LugaresComunes, Choferes, VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios
+import database as db
+import autenticacion as aut
+
+# region Usuarios
+usuarios_router = APIRouter()
+
+@usuarios_router.get("/{documento}")
+def get_usuario(documento: int):
+    try:
+        usuario = db.get_usuario_db(documento)
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+        return {"usuario": usuario}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@usuarios_router.post("/")
+def add_usuario(usuario: Usuarios):
+    try:
+        db.add_usuario_db(usuario)
+        return {"usuario": usuario}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@usuarios_router.put("/{documento}")
+def update_usuario(documento: int, usuario: Usuarios):
+    try:
+        db.update_usuario_db(documento, usuario)
+        return {"usuario": usuario}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@usuarios_router.delete("/{documento}")
+def delete_usuario(documento: int):
+    try:
+        db.delete_usuario_db(documento)
+        return {"message": f"Usuario con documento {documento} eliminado correctamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/login")
+def login(usuario: Usuarios, password: str):
+    try:
+        token = db.login(usuario, password)
+        if token:
+            return {"token": token}
+        else:
+            raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/logout")
+def logout(usuario: Usuarios):
+    try:
+        db.logout(usuario)
+        return {"message": "Usuario desconectado correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@usuarios_router.get("/validate/{token}")
+def validate(token: str):
+    try:
+        payload = aut.validate_token(token)
+        return {"payload": payload}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+# endregion
 
 # region Personas
 personas_router = APIRouter()
+
 @personas_router.get("/{documento}")
 def get_persona(documento: int):
     try:
@@ -388,6 +456,45 @@ def delete_ruta(id_ruta: int):
     try:
         db.delete_ruta_db(id_ruta)
         return {"message": f"Ruta con ID {id_ruta} eliminada correctamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+# endregion
+
+# region Visitas
+visitas_router = APIRouter()
+
+@visitas_router.get("/{id_visita}")
+def get_visita(id_visita: int):
+    try:
+        visita = db.get_visita_db(id_visita)
+        if not visita:
+            raise HTTPException(status_code=404, detail="Visita no encontrada.")
+        return {"visita": visita}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@visitas_router.post("/")
+def add_visita(visita: Visitas):
+    try:
+        db.add_visita_db(visita)
+        return {"visita": visita}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@visitas_router.put("/{id_visita}")
+def update_visita(id_visita: int, visita: Visitas):
+    try:
+        db.update_visita_db(id_visita, visita)
+        return {"visita": visita}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@visitas_router.delete("/{id_visita}")
+def delete_visita(id_visita: int):
+    try:
+        db.delete_visita_db(id_visita)
+        return {"message": f"Visita con ID {id_visita} eliminada correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
