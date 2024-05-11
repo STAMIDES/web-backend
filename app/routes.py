@@ -41,15 +41,15 @@ def delete_usuario(documento: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.post("/login")
-def login(usuario: Usuarios, password: str):
-    try:
-        token = db.login(usuario, password)
-        if token:
-            return {"token": token}
-        else:
-            raise HTTPException(status_code=401, detail="Credenciales inválidas")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+def login(request_body: dict):
+    username = request_body.get("username")
+    password = request_body.get("password")
+    token = db.login(username, password)
+    if token:
+        return {"token": token}
+    else:
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    
 
 @usuarios_router.post("/logout")
 def logout(usuario: Usuarios):
