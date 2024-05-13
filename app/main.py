@@ -1,10 +1,21 @@
 from fastapi import FastAPI # type: ignore
+from fastapi.middleware.cors import CORSMiddleware
 import database as db
 import routes as r
 from database import Base
 
-app = FastAPI(debug = True)
 
+origins = [
+    "*",  
+]
+
+app = FastAPI(debug = True)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 Base.metadata.create_all(bind=db.engine) # En producción hay que sacar esto de acá
 app.include_router(r.personas_router, prefix="/personas")
 app.include_router(r.personas_caracteristicas_router, prefix="/personas_caracteristicas")
