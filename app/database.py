@@ -104,6 +104,40 @@ def get_persona_db(documento):
     with get_db() as db:
         return db.query(Personas).filter(Personas.documento == documento).first()
 
+# Obtiene y devuelve una persona con sus características y pedidos asociados
+def get_persona_completa_db(documento):
+    with get_db() as db:
+        persona = db.query(Personas).filter(Personas.documento == documento).first()
+        if persona:
+            persona.caracteristicas = db.query(PersonasCaracteristicas).filter(PersonasCaracteristicas.id_persona == persona.id_persona).all()
+            persona.pedidos = db.query(Pedidos).filter(Pedidos.usuario_documento == persona.documento).all()
+        return persona
+
+# Obtiene las personas desde skip hasta skip+limit
+def get_personas_db(skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Personas).offset(skip).limit(limit).all()
+
+# Obtiene las personas cuyo documento contiene el valor de la variable documento al principio
+def get_personas_by_documento_db(documento: int, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Personas).filter(Personas.documento.startswith(documento)).offset(skip).limit(limit).all()
+
+# Obtiene las personas cuyo nombre o apellido contienen el valor de la variable nombre_apellido
+def get_personas_by_nombre_db(nombre: str, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Personas).filter(Personas.nombre.contains(nombre) | Personas.apellido.contains(nombre)).offset(skip).limit(limit).all()
+
+# Obtiene las personas de un tipo específico
+def get_personas_by_tipo_db(tipo_persona: str, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Personas).filter(Personas.tipo_persona == tipo_persona).offset(skip).limit(limit).all()
+
+# Obtiene las personas con una característica específica
+def get_personas_by_caracteristica_db(caracteristica: str, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Personas).join(PersonasCaracteristicas).filter(PersonasCaracteristicas.caracteristica == caracteristica).offset(skip).limit(limit).all()
+
 def update_persona_db(documento, persona):
     with get_db() as db:
         db.query(Personas).filter(Personas.documento == documento).update(persona.dict())
@@ -195,6 +229,16 @@ def get_pedido_db(id_pedido):
     with get_db() as db:
         return db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).first()
 
+# Obtiene los pedidos desde skip hasta skip+limit
+def get_pedidos_db(skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Pedidos).offset(skip).limit(limit).all()
+    
+# Obtiene los pedidos en un rango de fechas
+def get_pedidos_by_fecha_db(fecha_inicio: DateTime, fecha_fin: DateTime, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Pedidos).filter(Pedidos.hora_ingresado >= fecha_inicio, Pedidos.hora_ingresado <= fecha_fin).offset(skip).limit(limit).all()
+
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
         db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).update(pedido.dict())
@@ -234,6 +278,14 @@ def get_vehiculo_db(id_vehiculo):
     with get_db() as db:
         return db.query(Vehiculos).filter(Vehiculos.id_vehiculo == id_vehiculo).first()
 
+def get_vehiculos_db(skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Vehiculos).offset(skip).limit(limit).all()
+
+def get_vehiculo_by_matricula_db(matricula):
+    with get_db() as db:
+        return db.query(Vehiculos).filter(Vehiculos.matricula == matricula).first()
+    
 def update_vehiculo_db(id_vehiculo, vehiculo):
     with get_db() as db:
         db.query(Vehiculos).filter(Vehiculos.id_vehiculo == id_vehiculo).update(vehiculo.dict())
@@ -306,6 +358,10 @@ def get_chofer_db(documento):
     with get_db() as db:
         return db.query(Choferes).filter(Choferes.documento == documento).first()
     
+def get_choferes_db(skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Choferes).offset(skip).limit(limit).all()
+
 def update_chofer_db(documento, chofer):
     with get_db() as db:
         db.query(Choferes).filter(Choferes.documento == documento).update(chofer.dict())
@@ -343,6 +399,10 @@ def get_lugar_comun_db(id_deposito):
     with get_db() as db:
         return db.query(LugaresComunes).filter(LugaresComunes.id_deposito == id_deposito).first()
 
+def get_lugares_comunes_db(skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(LugaresComunes).offset(skip).limit(limit).all()
+
 def update_lugar_comun_db(id_deposito, deposito):
     with get_db() as db:
         db.query(LugaresComunes).filter(LugaresComunes.id_deposito == id_deposito).update(deposito.dict())
@@ -379,6 +439,13 @@ def get_planificacion_db(id_planificacion):
     with get_db() as db:
         return db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).first()
     
+# Obtiene las planificaciones para un determinado día
+def get_planificaciones_by_fecha_db(fecha: DateTime, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Planificaciones).filter(Planificaciones.fecha == fecha).offset(skip).limit(limit).all()
+
+# Obtiene una planificación con sus turnos asociados
+
 def update_planificacion_db(id_planificacion, planificacion):
     with get_db() as db:
         db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).update(planificacion.dict())

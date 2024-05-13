@@ -42,8 +42,8 @@ def delete_usuario(documento: int):
 
 @usuarios_router.post("/login")
 def login(request_body: dict):
-    username = request_body.get("username")
-    password = request_body.get("password")
+    username: str = str(request_body.get("username"))
+    password: str = str(request_body.get("password"))
     token = db.login(username, password)
     if token:
         return {"token": token}
@@ -79,6 +79,56 @@ def get_persona(documento: int):
         if not persona:
             raise HTTPException(status_code=404, detail="Persona no encontrada.")
         return {"persona": persona}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@personas_router.get("/{documento}")
+def get_persona_completa(documento: int):
+    try:
+        persona = db.get_persona_completa_db(documento)
+        if not persona:
+            raise HTTPException(status_code=404, detail="Persona no encontrada.")
+        return {"persona": persona}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@personas_router.get("/")
+def get_personas():
+    try:
+        personas = db.get_personas_db()
+        return {"personas": personas}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@personas_router.get("/nombre/{nombre}")
+def get_personas_nombre(nombre: str):
+    try:
+        personas = db.get_personas_by_nombre_db(nombre)
+        return {"personas": personas}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@personas_router.get("/documento/{documento}")
+def get_personas_documento(documento: int):
+    try:
+        personas = db.get_personas_by_documento_db(documento)
+        return {"personas": personas}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@personas_router.get("/tipo/{tipo}")
+def get_personas_tipo(tipo: str):
+    try:
+        personas = db.get_personas_by_tipo_db(tipo)
+        return {"personas": personas}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@personas_router.get("/caracteristica/{caracteristica}")
+def get_personas_caracteristica(caracteristica: str):
+    try:
+        personas = db.get_personas_by_caracteristica_db(caracteristica)
+        return {"personas": personas}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -158,6 +208,23 @@ def get_pedido(id_pedido: int):
         if not pedido:
             raise HTTPException(status_code=404, detail="Pedido no encontrado.")
         return {"pedido": pedido}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@pedidos_router.get("/")
+def get_pedidos():
+    try:
+        pedidos = db.get_pedidos_db()
+        return {"pedidos": pedidos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+# obtener pedidos por fecha
+@pedidos_router.get("/fecha/{fecha}")
+def get_pedidos_fecha(fecha_inicio, fecha_fin):
+    try:
+        pedidos = db.get_pedidos_by_fecha_db(fecha_inicio, fecha_fin)
+        return {"pedidos": pedidos}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -354,6 +421,13 @@ def get_planificacion(id_planificacion: int):
         if not planificacion:
             raise HTTPException(status_code=404, detail="Planificación no encontrada.")
         return {"planificacion": planificacion}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+def get_planificaciones_fecha(fecha):
+    try:
+        planificaciones = db.get_planificaciones_by_fecha_db(fecha)
+        return {"planificaciones": planificaciones}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
