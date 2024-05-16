@@ -1,5 +1,5 @@
 from fastapi import FastAPI # type: ignore
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
 import database as db
 import routes as r
 from database import Base
@@ -17,8 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 Base.metadata.create_all(bind=db.engine) # En producción hay que sacar esto de acá
-app.include_router(r.personas_router, prefix="/personas")
-app.include_router(r.personas_caracteristicas_router, prefix="/personas_caracteristicas")
+app.include_router(r.clientes_router, prefix="/clientes")
+app.include_router(r.clientes_caracteristicas_router, prefix="/clientes_caracteristicas")
 app.include_router(r.pedidos_router, prefix="/pedidos")
 app.include_router(r.vehiculos_router, prefix="/vehiculos")
 app.include_router(r.vehiculos_caracteristicas_router, prefix="/vehiculos_caracteristicas")

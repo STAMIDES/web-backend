@@ -79,12 +79,11 @@ def logout(username: str):
 
 # endregion
 
-# region Personas
+# region Clientes
+class Clientes(Base):
+    __tablename__ = 'clientes'
 
-class Personas(Base):
-    __tablename__ = 'personas'
-
-    id_persona = Column(Integer, primary_key=True, index=True)
+    id_cliente = Column(Integer, primary_key=True, index=True)
     documento = Column(Integer, unique=True)
     nombre = Column(String)
     apellido = Column(String)
@@ -92,107 +91,116 @@ class Personas(Base):
     observaciones = Column(String)
     tipo_persona = Column(String)
 
-def add_persona_db(persona):
+def add_cliente_db(cliente):
     with get_db() as db:
-        persona_obj = Personas(**persona.dict())
-        db.add(persona_obj)
+        # Add client to the database
+        db.add(cliente)
         db.commit()
-        db.refresh(persona_obj)
-        return persona_obj
+        db.refresh(cliente)
+        return cliente
 
-def get_persona_db(documento):
+def get_cliente_db(documento):
     with get_db() as db:
-        return db.query(Personas).filter(Personas.documento == documento).first()
+        # Retrieve client from the database based on document
+        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        return cliente
 
-# Obtiene y devuelve una persona con sus características y pedidos asociados
-def get_persona_completa_db(documento):
+# Obtiene y devuelve un cliente con sus características y pedidos asociados
+def get_cliente_completo_db(documento):
     with get_db() as db:
-        persona = db.query(Personas).filter(Personas.documento == documento).first()
-        if persona:
-            persona.caracteristicas = db.query(PersonasCaracteristicas).filter(PersonasCaracteristicas.id_persona == persona.id_persona).all()
-            persona.pedidos = db.query(Pedidos).filter(Pedidos.usuario_documento == persona.documento).all()
-        return persona
+        # Retrieve client and their associated orders from the database based on document
+        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        # Retrieve orders associated with the client
+        pedidos = db.query(Pedidos).filter(Pedidos.usuario_documento == documento).all()
+        return cliente, pedidos
 
-# Obtiene las personas desde skip hasta skip+limit
-def get_personas_db(skip: int = 0, limit: int = 100):
+# Obtiene los clientes desde skip hasta skip+limit
+def get_clientes_db(skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Personas).offset(skip).limit(limit).all()
+        # Retrieve clients from the database with pagination
+        clientes = db.query(Clientes).offset(skip).limit(limit).all()
+        return clientes
 
-# Obtiene las personas cuyo documento contiene el valor de la variable documento al principio
-def get_personas_by_documento_db(documento: int, skip: int = 0, limit: int = 100):
+# Obtiene los clientes cuyo documento contiene el valor de la variable documento al principio
+def get_clientes_by_documento_db(documento: int, skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Personas).filter(Personas.documento.startswith(documento)).offset(skip).limit(limit).all()
+        # Retrieve clients from the database whose document starts with the given value
+        clientes = db.query(Clientes).filter(Clientes.documento.startswith(str(documento))).offset(skip).limit(limit).all()
+        return clientes
 
-# Obtiene las personas cuyo nombre o apellido contienen el valor de la variable nombre_apellido
-def get_personas_by_nombre_db(nombre: str, skip: int = 0, limit: int = 100):
+# Obtiene los clientes cuyo nombre o apellido contienen el valor de la variable nombre_apellido
+def get_clientes_by_nombre_db(nombre: str, skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Personas).filter(Personas.nombre.contains(nombre) | Personas.apellido.contains(nombre)).offset(skip).limit(limit).all()
+        # Retrieve clients from the database whose name or last name contains the given value
+        clientes = db.query(Clientes).filter((Clientes.nombre.ilike(f'%{nombre}%')) | (Clientes.apellido.ilike(f'%{nombre}%'))).offset(skip).limit(limit).all()
+        return clientes
 
-# Obtiene las personas de un tipo específico
-def get_personas_by_tipo_db(tipo_persona: str, skip: int = 0, limit: int = 100):
+# Obtiene los clientes de un tipo específico
+def get_clientes_by_tipo_db(tipo_persona: str, skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Personas).filter(Personas.tipo_persona == tipo_persona).offset(skip).limit(limit).all()
+        # Retrieve clients from the database of a specific type
+        clientes = db.query(Clientes).filter(Clientes.tipo_persona == tipo_persona).offset(skip).limit(limit).all()
+        return clientes
 
-# Obtiene las personas con una característica específica
-def get_personas_by_caracteristica_db(caracteristica: str, skip: int = 0, limit: int = 100):
+# Obtiene los clientes con una característica específica
+def get_clientes_by_caracteristica_db(caracteristica: str, skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Personas).join(PersonasCaracteristicas).filter(PersonasCaracteristicas.caracteristica == caracteristica).offset(skip).limit(limit).all()
+        # Retrieve clients from the database with a specific characteristic
+        clientes = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).offset(skip).limit(limit).all()
+        return clientes
 
-def update_persona_db(documento, persona):
+def update_cliente_db(documento, cliente):
     with get_db() as db:
-        db.query(Personas).filter(Personas.documento == documento).update(persona.dict())
+        # Update client in the database based on document
+        db.query(Clientes).filter(Clientes.documento == documento).update(cliente)
         db.commit()
-        return persona
+        return cliente
 
-def delete_persona_db(documento):
+def delete_cliente_db(documento):
     with get_db() as db:
-        db.query(Personas).filter(Personas.documento == documento).delete()
+        # Delete client from the database based on document
+        db.query(Clientes).filter(Clientes.documento == documento).delete()
         db.commit()
-        return {"message": f"Persona con documento {documento} eliminada correctamente."}
+        return {"message": f"Cliente con documento {documento} eliminado correctamente."}
 
 # endregion
 
-# region PersonasCaracteristicas
+# region ClientesCaracteristicas
 
-class PersonasCaracteristicas(Base):
-    __tablename__ = 'personas_caracteristicas'
+class ClientesCaracteristicas(Base):
+    __tablename__ = 'clientes_caracteristicas'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_persona = Column(Integer, ForeignKey('personas.id_persona'))
+    id_cliente = Column(Integer, ForeignKey('clientes.id_cliente'))
     caracteristica = Column(String)
 
-def add_persona_caracteristica(persona_caracteristica):
-    with SessionLocal() as db:
-        persona_caracteristica_obj = PersonasCaracteristicas(**persona_caracteristica.dict())
-        db.add(persona_caracteristica_obj)
+def add_cliente_caracteristica(cliente_caracteristica):
+    with get_db() as db:
+        # Add client characteristic to the database
+        db.add(cliente_caracteristica)
         db.commit()
-        db.refresh(persona_caracteristica_obj)
-        return persona_caracteristica_obj
-
-def get_persona_caracteristica(documento: int):
-    with SessionLocal() as db:
-        persona_caracteristica = db.query(PersonasCaracteristicas).filter(PersonasCaracteristicas.documento == documento).first()
-        return persona_caracteristica
-
-def update_persona_caracteristica(documento: int, caracteristica: str):
-    with SessionLocal() as db:
-        persona_caracteristica = db.query(PersonasCaracteristicas).filter(PersonasCaracteristicas.documento == documento).first()
-        if persona_caracteristica:
-            persona_caracteristica.caracteristica = caracteristica
-            db.commit()
-            db.refresh(persona_caracteristica)
-            return True
-        return False
-
-def delete_persona_caracteristica(documento: int):
-    with SessionLocal() as db:
-        persona_caracteristica = db.query(PersonasCaracteristicas).filter(PersonasCaracteristicas.documento == documento).first()
-        if persona_caracteristica:
-            db.delete(persona_caracteristica)
-            db.commit()
-            return True
-        return False
-
+        db.refresh(cliente_caracteristica)
+        return cliente_caracteristica
+    
+def get_cliente_caracteristica(id_cliente):
+    with get_db() as db:
+        # Retrieve client characteristic from the database based on client id
+        cliente_caracteristica = db.query(ClientesCaracteristicas).filter(ClientesCaracteristicas.id_cliente == id_cliente).first()
+        return cliente_caracteristica
+    
+def update_cliente_caracteristica(id_cliente, caracteristica):
+    with get_db() as db:
+        # Update client characteristic in the database based on client id
+        db.query(ClientesCaracteristicas).filter(ClientesCaracteristicas.id_cliente == id_cliente).update(caracteristica)
+        db.commit()
+        return caracteristica
+    
+def delete_cliente_caracteristica(id_cliente):
+    with get_db() as db:
+        # Delete client characteristic from the database based on client id
+        db.query(ClientesCaracteristicas).filter(ClientesCaracteristicas.id_cliente == id_cliente).delete()
+        db.commit()
+        return {"message": f"Características del cliente con ID {id_cliente} eliminadas correctamente."}
 # endregion
 
 # region Pedidos

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException # type: ignore
-from models import Pedidos, Personas, PersonasCaracteristicas, Vehiculos, LugaresComunes, Choferes, VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios
+from models import Pedidos, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios
 import database as db
 import autenticacion as aut
 
@@ -69,127 +69,127 @@ def validate(token: str):
 
 # endregion
 
-# region Personas
-personas_router = APIRouter()
+# region Clientes
+clientes_router = APIRouter()
 
-@personas_router.get("/{documento}")
-def get_persona(documento: int):
+@clientes_router.get("/{documento}")
+def get_cliente(documento: int):
     try:
-        persona = db.get_persona_db(documento)
-        if not persona:
-            raise HTTPException(status_code=404, detail="Persona no encontrada.")
-        return {"persona": persona}
+        cliente = db.get_cliente_db(documento)
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+        return {"cliente": cliente}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@clientes_router.get("/{documento}")
+def get_cliente_completo(documento: int):
+    try:
+        cliente = db.get_cliente_completo_db(documento)
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+        return {"cliente": cliente}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_router.get("/{documento}")
-def get_persona_completa(documento: int):
+@clientes_router.get("/")
+def get_clientes():
     try:
-        persona = db.get_persona_completa_db(documento)
-        if not persona:
-            raise HTTPException(status_code=404, detail="Persona no encontrada.")
-        return {"persona": persona}
+        clientes = db.get_clientes_db()
+        return {"clientes": clientes}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_router.get("/")
-def get_personas():
+@clientes_router.get("/{documento}")
+def get_clientes_documento(documento: int):
     try:
-        personas = db.get_personas_db()
-        return {"personas": personas}
+        clientes = db.get_clientes_by_documento_db(documento)
+        return {"clientes": clientes}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_router.get("/nombre/{nombre}")
-def get_personas_nombre(nombre: str):
+@clientes_router.get("/nombre/{nombre}")
+def get_clientes_nombre(nombre: str):
     try:
-        personas = db.get_personas_by_nombre_db(nombre)
-        return {"personas": personas}
+        clientes = db.get_clientes_by_nombre_db(nombre)
+        return {"clientes": clientes}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_router.get("/documento/{documento}")
-def get_personas_documento(documento: int):
+@clientes_router.get("tipo/{tipo}")
+def get_clientes_tipo(tipo: str):
     try:
-        personas = db.get_personas_by_documento_db(documento)
-        return {"personas": personas}
+        clientes = db.get_clientes_by_tipo_db(tipo)
+        return {"clientes": clientes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@clientes_router.get("/caracteristica/{caracteristica}")
+def get_clientes_caracteristica(caracteristica: str):
+    try:
+        clientes = db.get_clientes_by_caracteristica_db(caracteristica)
+        return {"clientes": clientes}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_router.get("/tipo/{tipo}")
-def get_personas_tipo(tipo: str):
+@clientes_router.post("/")
+def add_cliente(cliente: Clientes):
     try:
-        personas = db.get_personas_by_tipo_db(tipo)
-        return {"personas": personas}
+        db.add_cliente_db(cliente)
+        return {"cliente": cliente}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-
-@personas_router.get("/caracteristica/{caracteristica}")
-def get_personas_caracteristica(caracteristica: str):
+    
+@clientes_router.put("/{documento}")
+def update_cliente(documento: int, cliente: Clientes):
     try:
-        personas = db.get_personas_by_caracteristica_db(caracteristica)
-        return {"personas": personas}
+        db.update_cliente_db(documento, cliente)
+        return {"cliente": cliente}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-
-@personas_router.post("/")
-def add_persona(persona: Personas):
+    
+@clientes_router.delete("/{documento}")
+def delete_cliente(documento: int):
     try:
-        db.add_persona_db(persona)
-        return {"persona": persona}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-
-@personas_router.put("/{documento}")
-def update_persona(documento: int, persona: Personas):
-    try:
-        db.update_persona_db(documento, persona)
-        return {"persona": persona}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-
-@personas_router.delete("/{documento}")
-def delete_persona(documento: int):
-    try:
-        db.delete_persona_db(documento)
-        return {"message": f"Persona con documento {documento} eliminada correctamente."}
+        db.delete_cliente_db(documento)
+        return {"message": f"Cliente con documento {documento} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 # endregion
 
-# region PersonasCaracteristicas
-personas_caracteristicas_router = APIRouter()
+# region ClientesCaracteristicas
+clientes_caracteristicas_router = APIRouter()
 
-@personas_caracteristicas_router.post("/")
-def add_persona_caracteristica(persona_caracteristica: PersonasCaracteristicas):
+@clientes_caracteristicas_router.post("/")
+def add_cliente_caracteristica(persona_caracteristica: ClientesCaracteristicas):
     try:
-        db.add_persona_caracteristica(persona_caracteristica)
+        db.add_cliente_caracteristica(persona_caracteristica)
         return {"persona_caracteristica": persona_caracteristica}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_caracteristicas_router.get("/{documento}")
-def get_persona_caracteristica(documento: int):
-    persona_caracteristica = db.get_persona_caracteristica(documento)
+@clientes_caracteristicas_router.get("/{documento}")
+def get_cliente_caracteristica(documento: int):
+    persona_caracteristica = db.get_cliente_caracteristica(documento)
     if persona_caracteristica:
         return {"persona_caracteristica": persona_caracteristica}
     raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
 
-@personas_caracteristicas_router.put("/{documento}")
-def update_persona_caracteristica(documento: int, caracteristica: str):
+@clientes_caracteristicas_router.put("/{documento}")
+def update_cliente_caracteristica(documento: int, caracteristica: str):
     try:
-        updated = db.update_persona_caracteristica(documento, caracteristica)
+        updated = db.update_cliente_caracteristica(documento, caracteristica)
         if updated:
             return {"message": f"Característica actualizada correctamente para el documento {documento}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@personas_caracteristicas_router.delete("/{documento}")
-def delete_persona_caracteristica(documento: int):
+@clientes_caracteristicas_router.delete("/{documento}")
+def delete_cliente_caracteristica(documento: int):
     try:
-        deleted = db.delete_persona_caracteristica(documento)
+        deleted = db.delete_cliente_caracteristica(documento)
         if deleted:
             return {"message": f"Característica eliminada correctamente para el documento {documento}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")

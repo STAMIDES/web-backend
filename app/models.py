@@ -12,22 +12,23 @@ class Usuarios(BaseModel):
     activo: bool
     token: Optional[str]
 
-class TipoPersona(str, Enum):
+class TipoCliente(str, Enum):
     particular = "Usuario particular"
     dispositivo = "Usuario de dispositivo del MIDES"
     salud = "Centro de salud o rehabilitación"
 
-class Personas(BaseModel):
-    id_persona: Optional[int]
+class Clientes(BaseModel):
+    id_cliente: Optional[int]
     documento: int
     nombre: str
     apellido: str
     telefono: Optional[str]
+    email: Optional[str]
     observaciones: Optional[str]
-    tipo_persona: TipoPersona
+    tipo: TipoCliente
 
-class PersonasCaracteristicas(BaseModel):
-    id_persona: int
+class ClientesCaracteristicas(BaseModel):
+    id_cliente: int
     caracteristica: str
 
 class Pedidos(BaseModel):
