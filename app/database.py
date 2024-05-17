@@ -209,7 +209,7 @@ class Pedidos(Base):
     __tablename__ = 'pedidos'
 
     id_pedido = Column(Integer, primary_key=True, index=True)
-    usuario_documento = Column(Integer, ForeignKey('personas.documento'))  # Referencia a la tabla personas
+    usuario_documento = Column(Integer, ForeignKey('personas.documento'))
     direccion_origen = Column(String)
     direccion_destino = Column(String)
     latitud_origen = Column(Float)
@@ -242,10 +242,17 @@ def get_pedidos_db(skip: int = 0, limit: int = 100):
     with get_db() as db:
         return db.query(Pedidos).offset(skip).limit(limit).all()
     
-# Obtiene los pedidos en un rango de fechas
-def get_pedidos_by_fecha_db(fecha_inicio: DateTime, fecha_fin: DateTime, skip: int = 0, limit: int = 100):
+# Obtiene los pedidos creados en un rango de fechas
+def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, skip: int = 0, limit: int = 100):
     with get_db() as db:
         return db.query(Pedidos).filter(Pedidos.hora_ingresado >= fecha_inicio, Pedidos.hora_ingresado <= fecha_fin).offset(skip).limit(limit).all()
+    
+# Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
+def get_pedidos_by_fecha_db(fecha: DateTime, skip: int = 0, limit: int = 100):
+    with get_db() as db:
+        return db.query(Pedidos).filter(Pedidos.ventana_origen_inicio.date() == fecha.date(), 
+                                        Pedidos.ventana_destino_inicio.date() == fecha.date()).offset(skip).limit(limit).all()
+
 
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
@@ -434,6 +441,30 @@ class Planificaciones(Base):
     fecha = Column(DateTime)
     fechaCreacion = Column(DateTime)
     observaciones = Column(String)
+
+# Crea un planificación y dos turnos asociados
+def crear_planificacion(planificacion):
+    with get_db() as db:
+        planificacion_obj = add_planificacion_db(planificacion)
+
+        # Crea dos turnos por defecto asociados a la planificación
+        planificacion_obj.turnos = []
+        turno1 = Turnos(id_planificacion=planificacion_obj.id_planificacion, descripcion="Turno mañana", hora_inicio="06:00", hora_fin="14:00")
+        turno1 = add_turno_db(turno1)
+        planificacion_obj.turnos.append(turno1)
+        turno2 = Turnos(id_planificacion=planificacion_obj.id_planificacion, descripcion="Turno tarde", hora_inicio="13:00", hora_fin="21:00")
+        turno2 = add_turno_db(turno2)
+        planificacion_obj.turnos.append(turno2)
+
+        # Asocia a la planificación los vehículos, choferes y lugares comunes disponibles
+        planificacion_obj.vehiculos = get_vehiculos_db()
+        planificacion_obj.choferes = get_choferes_db()
+        planificacion_obj.lugares_comunes = get_lugares_comunes_db()
+
+        # Asocia a la planificación los pedidos para su fecha
+        planificacion_obj.pedios = get_pedidos_by_fecha_db(planificacion_obj.fecha)
+
+        return planificacion_obj
 
 def add_planificacion_db(planificacion):
     with get_db() as db:

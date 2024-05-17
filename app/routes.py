@@ -434,7 +434,7 @@ def get_planificaciones_fecha(fecha):
 @planificaciones_router.post("/")
 def add_planificacion(planificacion: Planificaciones):
     try:
-        db.add_planificacion_db(planificacion)
+        db.crear_planificacion(planificacion)
         return {"planificacion": planificacion}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
