@@ -3,7 +3,8 @@ from models import (Pedidos, Clientes, ClientesCreate, ClientesCaracteristicas, 
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, UsuarioCreate)
 import database as db
 import autenticacion as aut
-
+from datetime import datetime
+import logging
 # region Usuarios
 usuarios_router = APIRouter()
 
@@ -223,10 +224,17 @@ def get_pedidos():
     
 # obtener pedidos por fecha
 @pedidos_router.get("/fecha/{fecha}")
-def get_pedidos_fecha(fecha_inicio, fecha_fin):
+def get_pedidos_fecha(fecha: str):
     try:
-        pedidos = db.get_pedidos_by_fecha_db(fecha_inicio, fecha_fin)
-        return {"pedidos": pedidos}
+        fechaD = datetime.strptime(fecha, "%Y-%m-%d")
+        pedidosdb = db.get_pedidos_by_fecha_db(fechaD)
+        list_ret = []
+        for p in pedidosdb:
+            dic_ret=p[0].__dict__
+            dic_ret['cliente_nombre'] = p.nombre
+            dic_ret['cliente_apellido'] = p.apellido
+            list_ret.append(dic_ret)
+        return {"pedidos": list_ret}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 

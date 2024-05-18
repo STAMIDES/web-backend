@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
@@ -258,8 +258,12 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
 # Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
 def get_pedidos_by_fecha_db(fecha: DateTime, skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Pedidos).filter(Pedidos.ventana_origen_inicio.date() == fecha.date(), 
-                                        Pedidos.ventana_destino_inicio.date() == fecha.date()).offset(skip).limit(limit).all()
+        return db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
+            join(Clientes, Pedidos.usuario_documento == Clientes.documento).\
+            filter(
+                func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
+                func.date(Pedidos.ventana_destino_inicio) == fecha.date()
+            ).offset(skip).limit(limit).all()
 
 
 def update_pedido_db(id_pedido, pedido):
