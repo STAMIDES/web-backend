@@ -8,3 +8,4 @@ geoalchemy2
 shapely
 pyjwt
 passlib[bcrypt]
+alembic
