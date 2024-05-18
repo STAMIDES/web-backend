@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException # type: ignore
-from models import Pedidos, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios
+from models import (Pedidos, Clientes, ClientesCreate, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
+                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, UsuarioCreate)
 import database as db
 import autenticacion as aut
 
@@ -17,7 +18,7 @@ def get_usuario(documento: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @usuarios_router.post("/")
-def add_usuario(usuario: Usuarios):
+def add_usuario(usuario: UsuarioCreate):
     try:
         db.add_usuario_db(usuario)
         return {"usuario": usuario}
@@ -133,11 +134,12 @@ def get_clientes_caracteristica(caracteristica: str):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.post("/")
-def add_cliente(cliente: Clientes):
+def add_cliente(cliente: ClientesCreate):
     try:
         db.add_cliente_db(cliente)
         return {"cliente": cliente}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.put("/{documento}")
