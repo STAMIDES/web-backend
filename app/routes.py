@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException # type: ignore
-from models import Pedidos, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios
+from models import (Pedidos, Clientes, ClientesCreate, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
+                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, UsuarioCreate)
 import database as db
 import autenticacion as aut
-
+from datetime import datetime
+import logging
 # region Usuarios
 usuarios_router = APIRouter()
 
@@ -17,7 +19,7 @@ def get_usuario(documento: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @usuarios_router.post("/")
-def add_usuario(usuario: Usuarios):
+def add_usuario(usuario: UsuarioCreate):
     try:
         db.add_usuario_db(usuario)
         return {"usuario": usuario}
@@ -133,11 +135,12 @@ def get_clientes_caracteristica(caracteristica: str):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.post("/")
-def add_cliente(cliente: Clientes):
+def add_cliente(cliente: ClientesCreate):
     try:
         db.add_cliente_db(cliente)
         return {"cliente": cliente}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.put("/{documento}")
@@ -221,10 +224,17 @@ def get_pedidos():
     
 # obtener pedidos por fecha
 @pedidos_router.get("/fecha/{fecha}")
-def get_pedidos_fecha(fecha_inicio, fecha_fin):
+def get_pedidos_fecha(fecha: str):
     try:
-        pedidos = db.get_pedidos_by_fecha_db(fecha_inicio, fecha_fin)
-        return {"pedidos": pedidos}
+        fechaD = datetime.strptime(fecha, "%Y-%m-%d")
+        pedidosdb = db.get_pedidos_by_fecha_db(fechaD)
+        list_ret = []
+        for p in pedidosdb:
+            dic_ret=p[0].__dict__
+            dic_ret['cliente_nombre'] = p.nombre
+            dic_ret['cliente_apellido'] = p.apellido
+            list_ret.append(dic_ret)
+        return {"pedidos": list_ret}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 

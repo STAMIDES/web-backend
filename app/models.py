@@ -4,28 +4,32 @@ from shapely.geometry import LineString # type: ignore
 from datetime import datetime
 from enum import Enum
 
-class Usuarios(BaseModel):
-    id_usuario: Optional[int]
+class UsuarioCreate(BaseModel):
     nombre_usuario: str
     hashed_password: str
-    email: Optional[str]
+    email: str
     activo: bool
-    token: Optional[str]
+
+class Usuarios(UsuarioCreate):
+    id_usuario: Optional[int]
+    token: Optional[str] = None
 
 class TipoCliente(str, Enum):
-    particular = "Usuario particular"
-    dispositivo = "Usuario de dispositivo del MIDES"
-    salud = "Centro de salud o rehabilitación"
+    particular = "particular"
+    dispositivo = "dispositivo"
+    salud = "salud"
 
-class Clientes(BaseModel):
-    id_cliente: Optional[int]
+class ClientesCreate(BaseModel):
     documento: int
     nombre: str
     apellido: str
-    telefono: Optional[str]
+    telefono: Optional[int]
     email: Optional[str]
     observaciones: Optional[str]
     tipo: TipoCliente
+    
+class Clientes(BaseModel):
+    id_cliente: Optional[int]
 
 class ClientesCaracteristicas(BaseModel):
     id_cliente: int

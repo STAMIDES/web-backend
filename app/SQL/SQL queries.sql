@@ -1,7 +1,7 @@
 -- Fernando 28/04/2024
 
--- Crear tabla Personas
-CREATE TABLE Personas (
+-- Crear tabla Clientes
+CREATE TABLE Clientes (
     documento INT PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL,
     apellido VARCHAR(50) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE Personas (
 -- Crear tabla Pedidos
 CREATE TABLE Pedidos (
     id_pedido SERIAL PRIMARY KEY,
-    usuario_documento INT REFERENCES Personas(documento),
+    usuario_documento INT REFERENCES Clientes(documento),
     direccion_origen VARCHAR(255),
     direccion_destino VARCHAR(255),
     latitud_origen FLOAT,

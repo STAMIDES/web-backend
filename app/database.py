@@ -1,7 +1,9 @@
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, String, Float, DateTime, Boolean # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
+from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
 from geoalchemy2 import Geometry # type: ignore
+
 import autenticacion as aut
 
 SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
@@ -78,6 +80,10 @@ def logout(username: str):
         return {"message": f"Usuario {username} deslogueado correctamente."}
 
 # endregion
+class TipoCliente(Enum):
+    particular = "particular"
+    dispositivo = "dispositivo"
+    salud = "salud"
 
 # region Clientes
 class Clientes(Base):
@@ -89,15 +95,17 @@ class Clientes(Base):
     apellido = Column(String)
     telefono = Column(Integer)
     observaciones = Column(String)
-    tipo_persona = Column(String)
+    email = Column(String, nullable=True)
+    tipo = Column(SQLAEnum(TipoCliente), nullable=False)
 
 def add_cliente_db(cliente):
     with get_db() as db:
         # Add client to the database
-        db.add(cliente)
+        db_cliente = Clientes(**cliente.dict())
+        db.add(db_cliente)
         db.commit()
-        db.refresh(cliente)
-        return cliente
+        db.refresh(db_cliente)
+        return db_cliente
 
 def get_cliente_db(documento):
     with get_db() as db:
@@ -209,7 +217,7 @@ class Pedidos(Base):
     __tablename__ = 'pedidos'
 
     id_pedido = Column(Integer, primary_key=True, index=True)
-    usuario_documento = Column(Integer, ForeignKey('personas.documento'))
+    usuario_documento = Column(Integer, ForeignKey('clientes.documento'))
     direccion_origen = Column(String)
     direccion_destino = Column(String)
     latitud_origen = Column(Float)
@@ -250,8 +258,12 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
 # Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
 def get_pedidos_by_fecha_db(fecha: DateTime, skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Pedidos).filter(Pedidos.ventana_origen_inicio.date() == fecha.date(), 
-                                        Pedidos.ventana_destino_inicio.date() == fecha.date()).offset(skip).limit(limit).all()
+        return db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
+            join(Clientes, Pedidos.usuario_documento == Clientes.documento).\
+            filter(
+                func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
+                func.date(Pedidos.ventana_destino_inicio) == fecha.date()
+            ).offset(skip).limit(limit).all()
 
 
 def update_pedido_db(id_pedido, pedido):
