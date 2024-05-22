@@ -23,6 +23,7 @@ class ClientesCreate(BaseModel):
     documento: int
     nombre: str
     apellido: str
+    direccion: str
     telefono: Optional[int]
     email: Optional[str]
     observaciones: Optional[str]

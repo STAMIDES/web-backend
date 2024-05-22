@@ -93,6 +93,7 @@ class Clientes(Base):
     documento = Column(Integer, unique=True)
     nombre = Column(String)
     apellido = Column(String)
+    direccion = Column(String)
     telefono = Column(Integer)
     observaciones = Column(String)
     email = Column(String, nullable=True)

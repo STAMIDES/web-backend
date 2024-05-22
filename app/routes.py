@@ -52,7 +52,6 @@ def login(request_body: dict):
     else:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
-
 @usuarios_router.post("/logout")
 def logout(usuario: Usuarios):
     try:
