@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
@@ -134,7 +134,7 @@ def get_clientes_db(skip: int = 0, limit: int = 100):
 def get_clientes_by_documento_db(documento: int, skip: int = 0, limit: int = 100):
     with get_db() as db:
         # Retrieve clients from the database whose document starts with the given value
-        clientes = db.query(Clientes).filter(Clientes.documento.startswith(str(documento))).offset(skip).limit(limit).all()
+        clientes = db.query(Clientes).filter(cast(Clientes.documento, String).like(f'{documento}%')).offset(skip).limit(limit).all()
         return clientes
 
 # Obtiene los clientes cuyo nombre o apellido contienen el valor de la variable nombre_apellido

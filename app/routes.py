@@ -5,6 +5,8 @@ import database as db
 import autenticacion as aut
 from datetime import datetime
 import logging
+
+log = logging.getLogger(__name__)
 # region Usuarios
 usuarios_router = APIRouter()
 
@@ -101,7 +103,7 @@ def get_clientes():
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.get("/{documento}")
+@clientes_router.get("/doc/{documento}")
 def get_clientes_documento(documento: int):
     try:
         clientes = db.get_clientes_by_documento_db(documento)
