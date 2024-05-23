@@ -136,13 +136,17 @@ def get_clientes_caracteristica(caracteristica: str):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.post("/")
-def add_cliente(cliente: ClientesCreate):
+def add_cliente(cliente: ClientesCreate,
+                direccion= None,
+                telefono= None,
+                email= None,
+                observaciones= None):
     try:
-        db.add_cliente_db(cliente)
+        db.add_cliente_db(cliente,direccion,telefono,email,observaciones)
         return {"cliente": cliente}
     except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+       print(e)
+       raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.put("/{documento}")
 def update_cliente(documento: int, cliente: Clientes):

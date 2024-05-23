@@ -23,13 +23,13 @@ class ClientesCreate(BaseModel):
     documento: int
     nombre: str
     apellido: str
+    tipo: TipoCliente
+    
+class Clientes(ClientesCreate):
     direccion: str
     telefono: Optional[int]
     email: Optional[str]
     observaciones: Optional[str]
-    tipo: TipoCliente
-    
-class Clientes(BaseModel):
     id_cliente: Optional[int]
 
 class ClientesCaracteristicas(BaseModel):

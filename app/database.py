@@ -99,10 +99,10 @@ class Clientes(Base):
     email = Column(String, nullable=True)
     tipo = Column(SQLAEnum(TipoCliente), nullable=False)
 
-def add_cliente_db(cliente):
+def add_cliente_db(cliente, direccion, telefono, email, observaciones):
     with get_db() as db:
         # Add client to the database
-        db_cliente = Clientes(**cliente.dict())
+        db_cliente = Clientes(**cliente.dict(), direccion=direccion, telefono=telefono, email=email, observaciones=observaciones)
         db.add(db_cliente)
         db.commit()
         db.refresh(db_cliente)
