@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException # type: ignore
-from models import (Pedidos, Clientes, ClientesCreate, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
-                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, UsuarioCreate)
+from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
+from models import (Pedidos, PedidosCreate, Clientes, ClientesCreate, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
+                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest)
 import database as db
-import autenticacion as aut
+import autenticacion.autenticacion as aut
+from autenticacion.autenticacion_bearer import JWTBearer
 from datetime import datetime
 import logging
 
@@ -10,7 +11,7 @@ log = logging.getLogger(__name__)
 # region Usuarios
 usuarios_router = APIRouter()
 
-@usuarios_router.get("/{documento}")
+@usuarios_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
 def get_usuario(documento: int):
     try:
         usuario = db.get_usuario_db(documento)
@@ -20,15 +21,15 @@ def get_usuario(documento: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.post("/")
-def add_usuario(usuario: UsuarioCreate):
+@usuarios_router.post("/", dependencies=[Depends(JWTBearer())])
+def add_usuario(usuario: Usuarios):
     try:
-        db.add_usuario_db(usuario)
+        usuario = db.add_usuario_db(usuario)
         return {"usuario": usuario}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.put("/{documento}")
+@usuarios_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
 def update_usuario(documento: int, usuario: Usuarios):
     try:
         db.update_usuario_db(documento, usuario)
@@ -36,7 +37,7 @@ def update_usuario(documento: int, usuario: Usuarios):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.delete("/{documento}")
+@usuarios_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
 def delete_usuario(documento: int):
     try:
         db.delete_usuario_db(documento)
@@ -45,16 +46,14 @@ def delete_usuario(documento: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.post("/login")
-def login(request_body: dict):
-    username: str = str(request_body.get("username"))
-    password: str = str(request_body.get("password"))
-    token = db.login(username, password)
-    if token:
+def login(request: LoginRequest):
+    try:
+        token = db.login(request.username, request.password)
         return {"token": token}
-    else:
-        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
-@usuarios_router.post("/logout")
+@usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
 def logout(usuario: Usuarios):
     try:
         db.logout(usuario)
@@ -62,20 +61,12 @@ def logout(usuario: Usuarios):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.get("/validate/{token}")
-def validate(token: str):
-    try:
-        payload = aut.validate_token(token)
-        return {"payload": payload}
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Token inválido")
-
 # endregion
 
 # region Clientes
 clientes_router = APIRouter()
 
-@clientes_router.get("/{documento}")
+@clientes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
 def get_cliente(documento: int):
     try:
         cliente = db.get_cliente_db(documento)
@@ -85,7 +76,7 @@ def get_cliente(documento: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@clientes_router.get("/{documento}")
+@clientes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
 def get_cliente_completo(documento: int):
     try:
         cliente = db.get_cliente_completo_db(documento)
@@ -95,7 +86,7 @@ def get_cliente_completo(documento: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.get("/")
+@clientes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_clientes():
     try:
         clientes = db.get_clientes_db()
@@ -103,7 +94,7 @@ def get_clientes():
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.get("/doc/{documento}")
+@clientes_router.get("/doc/{documento}", dependencies=[Depends(JWTBearer())])
 def get_clientes_documento(documento: int):
     try:
         clientes = db.get_clientes_by_documento_db(documento)
@@ -111,7 +102,7 @@ def get_clientes_documento(documento: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.get("/nombre/{nombre}")
+@clientes_router.get("/nombre/{nombre}", dependencies=[Depends(JWTBearer())])
 def get_clientes_nombre(nombre: str):
     try:
         clientes = db.get_clientes_by_nombre_db(nombre)
@@ -119,7 +110,7 @@ def get_clientes_nombre(nombre: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.get("tipo/{tipo}")
+@clientes_router.get("tipo/{tipo}", dependencies=[Depends(JWTBearer())])
 def get_clientes_tipo(tipo: str):
     try:
         clientes = db.get_clientes_by_tipo_db(tipo)
@@ -127,7 +118,7 @@ def get_clientes_tipo(tipo: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@clientes_router.get("/caracteristica/{caracteristica}")
+@clientes_router.get("/caracteristica/{caracteristica}", dependencies=[Depends(JWTBearer())])
 def get_clientes_caracteristica(caracteristica: str):
     try:
         clientes = db.get_clientes_by_caracteristica_db(caracteristica)
@@ -135,20 +126,20 @@ def get_clientes_caracteristica(caracteristica: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.post("/")
+@clientes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_cliente(cliente: ClientesCreate,
                 direccion= None,
                 telefono= None,
                 email= None,
                 observaciones= None):
     try:
-        db.add_cliente_db(cliente,direccion,telefono,email,observaciones)
+        db.add_cliente_db(cliente, direccion, telefono, email, observaciones)
         return {"cliente": cliente}
     except Exception as e:
        print(e)
        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@clientes_router.put("/{documento}")
+@clientes_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
 def update_cliente(documento: int, cliente: Clientes):
     try:
         db.update_cliente_db(documento, cliente)
@@ -156,7 +147,7 @@ def update_cliente(documento: int, cliente: Clientes):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@clientes_router.delete("/{documento}")
+@clientes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
 def delete_cliente(documento: int):
     try:
         db.delete_cliente_db(documento)
@@ -169,7 +160,7 @@ def delete_cliente(documento: int):
 # region ClientesCaracteristicas
 clientes_caracteristicas_router = APIRouter()
 
-@clientes_caracteristicas_router.post("/")
+@clientes_caracteristicas_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_cliente_caracteristica(persona_caracteristica: ClientesCaracteristicas):
     try:
         db.add_cliente_caracteristica(persona_caracteristica)
@@ -177,14 +168,14 @@ def add_cliente_caracteristica(persona_caracteristica: ClientesCaracteristicas):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_caracteristicas_router.get("/{documento}")
+@clientes_caracteristicas_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
 def get_cliente_caracteristica(documento: int):
     persona_caracteristica = db.get_cliente_caracteristica(documento)
     if persona_caracteristica:
         return {"persona_caracteristica": persona_caracteristica}
     raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
 
-@clientes_caracteristicas_router.put("/{documento}")
+@clientes_caracteristicas_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
 def update_cliente_caracteristica(documento: int, caracteristica: str):
     try:
         updated = db.update_cliente_caracteristica(documento, caracteristica)
@@ -194,7 +185,7 @@ def update_cliente_caracteristica(documento: int, caracteristica: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_caracteristicas_router.delete("/{documento}")
+@clientes_caracteristicas_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
 def delete_cliente_caracteristica(documento: int):
     try:
         deleted = db.delete_cliente_caracteristica(documento)
@@ -209,7 +200,7 @@ def delete_cliente_caracteristica(documento: int):
 # region Pedidos
 pedidos_router = APIRouter()
 
-@pedidos_router.get("/{id_pedido}")
+@pedidos_router.get("/{id_pedido}", dependencies=[Depends(JWTBearer())])
 def get_pedido(id_pedido: int):
     try:
         pedido = db.get_pedido_db(id_pedido)
@@ -219,7 +210,7 @@ def get_pedido(id_pedido: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@pedidos_router.get("/")
+@pedidos_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_pedidos():
     try:
         pedidos = db.get_pedidos_db()
@@ -227,31 +218,24 @@ def get_pedidos():
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-# obtener pedidos por fecha
-@pedidos_router.get("/fecha/{fecha}")
+# Obtener pedidos por fecha
+@pedidos_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
 def get_pedidos_fecha(fecha: str):
     try:
-        fechaD = datetime.strptime(fecha, "%Y-%m-%d")
-        pedidosdb = db.get_pedidos_by_fecha_db(fechaD)
-        list_ret = []
-        for p in pedidosdb:
-            dic_ret=p[0].__dict__
-            dic_ret['cliente_nombre'] = p.nombre
-            dic_ret['cliente_apellido'] = p.apellido
-            list_ret.append(dic_ret)
-        return {"pedidos": list_ret}
+        pedidos = db.get_pedidos_by_fecha_db(fecha)
+        return {"pedidos": pedidos}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-
-@pedidos_router.post("/")
-def add_pedido(pedido: Pedidos):
+    
+@pedidos_router.post("/", dependencies=[Depends(JWTBearer())])
+def add_pedido(pedido: PedidosCreate):
     try:
         db.add_pedido_db(pedido)
         return {"pedido": pedido}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@pedidos_router.put("/{id_pedido}")
+@pedidos_router.put("/{id_pedido}", dependencies=[Depends(JWTBearer())])
 def update_pedido(id_pedido: int, pedido: Pedidos):
     try:
         db.update_pedido_db(id_pedido, pedido)
@@ -259,7 +243,7 @@ def update_pedido(id_pedido: int, pedido: Pedidos):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@pedidos_router.delete("/{id_pedido}")
+@pedidos_router.delete("/{id_pedido}", dependencies=[Depends(JWTBearer())])
 def delete_pedido(id_pedido: int):
     try:
         db.delete_pedido_db(id_pedido)
@@ -272,7 +256,7 @@ def delete_pedido(id_pedido: int):
 # region Vehiculos
 vehiculos_router = APIRouter()
 
-@vehiculos_router.get("/{id_vehiculo}")
+@vehiculos_router.get("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def get_vehiculo(id_vehiculo: int):
     try:
         vehiculo = db.get_vehiculo_db(id_vehiculo)
@@ -282,7 +266,7 @@ def get_vehiculo(id_vehiculo: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@vehiculos_router.post("/")
+@vehiculos_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_vehiculo(vehiculo: Vehiculos):
     try:
         db.add_vehiculo_db(vehiculo)
@@ -290,7 +274,7 @@ def add_vehiculo(vehiculo: Vehiculos):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@vehiculos_router.put("/{id_vehiculo}")
+@vehiculos_router.put("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def update_vehiculo(id_vehiculo: int, vehiculo: Vehiculos):
     try:
         db.update_vehiculo_db(id_vehiculo, vehiculo)
@@ -298,7 +282,7 @@ def update_vehiculo(id_vehiculo: int, vehiculo: Vehiculos):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@vehiculos_router.delete("/{id_vehiculo}")
+@vehiculos_router.delete("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def delete_vehiculo(id_vehiculo: int):
     try:
         db.delete_vehiculo_db(id_vehiculo)
@@ -311,7 +295,7 @@ def delete_vehiculo(id_vehiculo: int):
 # region VehiculosCaracteristicas
 vehiculos_caracteristicas_router = APIRouter()
 
-@vehiculos_caracteristicas_router.post("/")
+@vehiculos_caracteristicas_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_vehiculo_caracteristica(vehiculo_caracteristica: VehiculosCaracteristicas):
     try:
         db.add_vehiculo_caracteristica(vehiculo_caracteristica)
@@ -319,14 +303,14 @@ def add_vehiculo_caracteristica(vehiculo_caracteristica: VehiculosCaracteristica
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@vehiculos_caracteristicas_router.get("/{id_vehiculo}")
+@vehiculos_caracteristicas_router.get("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def get_vehiculo_caracteristica(id_vehiculo: int):
     vehiculo_caracteristica = db.get_vehiculo_caracteristica(id_vehiculo)
     if vehiculo_caracteristica:
         return {"vehiculo_caracteristica": vehiculo_caracteristica}
     raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el vehículo con ID {id_vehiculo}")
 
-@vehiculos_caracteristicas_router.put("/{id_vehiculo}")
+@vehiculos_caracteristicas_router.put("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def update_vehiculo_caracteristica(id_vehiculo: int, caracteristica: str):
     try:
         updated = db.update_vehiculo_caracteristica(id_vehiculo, caracteristica)
@@ -336,7 +320,7 @@ def update_vehiculo_caracteristica(id_vehiculo: int, caracteristica: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@vehiculos_caracteristicas_router.delete("/{id_vehiculo}")
+@vehiculos_caracteristicas_router.delete("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def delete_vehiculo_caracteristica(id_vehiculo: int):
     try:
         deleted = db.delete_vehiculo_caracteristica(id_vehiculo)
@@ -351,7 +335,7 @@ def delete_vehiculo_caracteristica(id_vehiculo: int):
 # region Choferes
 choferes_router = APIRouter()
 
-@choferes_router.get("/{documento}")
+@choferes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
 def get_chofer(documento: int):
     try:
         chofer = db.get_chofer_db(documento)
@@ -361,7 +345,7 @@ def get_chofer(documento: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@choferes_router.post("/")
+@choferes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_chofer(chofer: Choferes):
     try:
         db.add_chofer_db(chofer)
@@ -369,7 +353,7 @@ def add_chofer(chofer: Choferes):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@choferes_router.put("/{documento}")
+@choferes_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
 def update_chofer(documento: int, chofer: Choferes):
     try:
         db.update_chofer_db(documento, chofer)
@@ -377,7 +361,7 @@ def update_chofer(documento: int, chofer: Choferes):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@choferes_router.delete("/{documento}")
+@choferes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
 def delete_chofer(documento: int):
     try:
         db.delete_chofer_db(documento)
@@ -390,7 +374,7 @@ def delete_chofer(documento: int):
 # region LugaresComunes
 lugares_comunes_router = APIRouter()
 
-@lugares_comunes_router.get("/{id_lugar}")
+@lugares_comunes_router.get("/{id_lugar}", dependencies=[Depends(JWTBearer())])
 def get_lugar_comun(id_lugar: int):
     try:
         lugar = db.get_lugar_comun_db(id_lugar)
@@ -400,7 +384,7 @@ def get_lugar_comun(id_lugar: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@lugares_comunes_router.post("/")
+@lugares_comunes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_lugar_comun(lugar: LugaresComunes):
     try:
         db.add_lugar_comun_db(lugar)
@@ -408,7 +392,7 @@ def add_lugar_comun(lugar: LugaresComunes):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@lugares_comunes_router.put("/{id_lugar}")
+@lugares_comunes_router.put("/{id_lugar}", dependencies=[Depends(JWTBearer())])
 def update_lugar_comun(id_lugar: int, lugar: LugaresComunes):
     try:
         db.update_lugar_comun_db(id_lugar, lugar)
@@ -416,7 +400,7 @@ def update_lugar_comun(id_lugar: int, lugar: LugaresComunes):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@lugares_comunes_router.delete("/{id_lugar}")
+@lugares_comunes_router.delete("/{id_lugar}", dependencies=[Depends(JWTBearer())])
 def delete_lugar_comun(id_lugar: int):
     try:
         db.delete_lugar_comun_db(id_lugar)
@@ -429,7 +413,7 @@ def delete_lugar_comun(id_lugar: int):
 # region Planificaciones
 planificaciones_router = APIRouter()
 
-@planificaciones_router.get("/{id_planificacion}")
+@planificaciones_router.get("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
 def get_planificacion(id_planificacion: int):
     try:
         planificacion = db.get_planificacion_db(id_planificacion)
@@ -446,7 +430,7 @@ def get_planificaciones_fecha(fecha):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@planificaciones_router.post("/")
+@planificaciones_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_planificacion(planificacion: Planificaciones):
     try:
         db.crear_planificacion(planificacion)
@@ -454,7 +438,7 @@ def add_planificacion(planificacion: Planificaciones):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@planificaciones_router.put("/{id_planificacion}")
+@planificaciones_router.put("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
 def update_planificacion(id_planificacion: int, planificacion: Planificaciones):
     try:
         db.update_planificacion_db(id_planificacion, planificacion)
@@ -462,7 +446,7 @@ def update_planificacion(id_planificacion: int, planificacion: Planificaciones):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@planificaciones_router.delete("/{id_planificacion}")
+@planificaciones_router.delete("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
 def delete_planificacion(id_planificacion: int):
     try:
         db.delete_planificacion_db(id_planificacion)
@@ -475,7 +459,7 @@ def delete_planificacion(id_planificacion: int):
 # region Turnos
 turnos_router = APIRouter()
 
-@turnos_router.get("/{id_turno}")
+@turnos_router.get("/{id_turno}", dependencies=[Depends(JWTBearer())])
 def get_turno(id_turno: int):
     try:
         turno = db.get_turno_db(id_turno)
@@ -485,7 +469,7 @@ def get_turno(id_turno: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@turnos_router.post("/")
+@turnos_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_turno(turno: Turnos):
     try:
         db.add_turno_db(turno)
@@ -493,7 +477,7 @@ def add_turno(turno: Turnos):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@turnos_router.put("/{id_turno}")
+@turnos_router.put("/{id_turno}", dependencies=[Depends(JWTBearer())])
 def update_turno(id_turno: int, turno: Turnos):
     try:
         db.update_turno_db(id_turno, turno)
@@ -501,7 +485,7 @@ def update_turno(id_turno: int, turno: Turnos):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@turnos_router.delete("/{id_turno}")
+@turnos_router.delete("/{id_turno}", dependencies=[Depends(JWTBearer())])
 def delete_turno(id_turno: int):
     try:
         db.delete_turno_db(id_turno)
@@ -514,7 +498,7 @@ def delete_turno(id_turno: int):
 # region Rutas
 rutas_router = APIRouter()
 
-@rutas_router.get("/{id_ruta}")
+@rutas_router.get("/{id_ruta}", dependencies=[Depends(JWTBearer())])
 def get_ruta(id_ruta: int):
     try:
         ruta = db.get_ruta_db(id_ruta)
@@ -524,7 +508,7 @@ def get_ruta(id_ruta: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@rutas_router.post("/")
+@rutas_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_ruta(ruta: Rutas):
     try:
         db.add_ruta_db(ruta)
@@ -532,7 +516,7 @@ def add_ruta(ruta: Rutas):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@rutas_router.put("/{id_ruta}")
+@rutas_router.put("/{id_ruta}", dependencies=[Depends(JWTBearer())])
 def update_ruta(id_ruta: int, ruta: Rutas):
     try:
         db.update_ruta_db(id_ruta, ruta)
@@ -540,7 +524,7 @@ def update_ruta(id_ruta: int, ruta: Rutas):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@rutas_router.delete("/{id_ruta}")
+@rutas_router.delete("/{id_ruta}", dependencies=[Depends(JWTBearer())])
 def delete_ruta(id_ruta: int):
     try:
         db.delete_ruta_db(id_ruta)
@@ -553,7 +537,7 @@ def delete_ruta(id_ruta: int):
 # region Visitas
 visitas_router = APIRouter()
 
-@visitas_router.get("/{id_visita}")
+@visitas_router.get("/{id_visita}", dependencies=[Depends(JWTBearer())])
 def get_visita(id_visita: int):
     try:
         visita = db.get_visita_db(id_visita)
@@ -563,7 +547,7 @@ def get_visita(id_visita: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@visitas_router.post("/")
+@visitas_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_visita(visita: Visitas):
     try:
         db.add_visita_db(visita)
@@ -571,7 +555,7 @@ def add_visita(visita: Visitas):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@visitas_router.put("/{id_visita}")
+@visitas_router.put("/{id_visita}", dependencies=[Depends(JWTBearer())])
 def update_visita(id_visita: int, visita: Visitas):
     try:
         db.update_visita_db(id_visita, visita)
@@ -579,7 +563,7 @@ def update_visita(id_visita: int, visita: Visitas):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@visitas_router.delete("/{id_visita}")
+@visitas_router.delete("/{id_visita}", dependencies=[Depends(JWTBearer())])
 def delete_visita(id_visita: int):
     try:
         db.delete_visita_db(id_visita)

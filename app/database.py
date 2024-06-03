@@ -3,8 +3,9 @@ from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
 from geoalchemy2 import Geometry # type: ignore
+from datetime import datetime
 
-import autenticacion as aut
+import autenticacion.autenticacion as aut
 
 SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
 
@@ -29,7 +30,7 @@ class Usuarios(Base):
     nombre_usuario = Column(String, unique=True)
     hashed_password = Column(String)
     email = Column(String)
-    activo = Column(Boolean)
+    rol = Column(String)
     token = Column(String, nullable=True)
 
 def add_usuario_db(usuario):
@@ -67,7 +68,7 @@ def login(username: str, password: str):
         user.token = access_token
         user.activo = True
         db.commit()
-        return {"access_token": access_token}
+        return access_token
     
 def logout(username: str):
     with get_db() as db:
@@ -218,7 +219,7 @@ class Pedidos(Base):
     __tablename__ = 'pedidos'
 
     id_pedido = Column(Integer, primary_key=True, index=True)
-    usuario_documento = Column(Integer, ForeignKey('clientes.documento'))
+    cliente_documento = Column(Integer, ForeignKey('clientes.documento'))
     direccion_origen = Column(String)
     direccion_destino = Column(String)
     latitud_origen = Column(Float)
@@ -257,10 +258,11 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
         return db.query(Pedidos).filter(Pedidos.hora_ingresado >= fecha_inicio, Pedidos.hora_ingresado <= fecha_fin).offset(skip).limit(limit).all()
     
 # Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
-def get_pedidos_by_fecha_db(fecha: DateTime, skip: int = 0, limit: int = 100):
+def get_pedidos_by_fecha_db(fecha_str: str, skip: int = 0, limit: int = 100):
     with get_db() as db:
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
         return db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
-            join(Clientes, Pedidos.usuario_documento == Clientes.documento).\
+            join(Clientes, Pedidos.cliente_documento == Clientes.documento).\
             filter(
                 func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
                 func.date(Pedidos.ventana_destino_inicio) == fecha.date()
@@ -371,7 +373,7 @@ class Choferes(Base):
     nombre = Column(String)
     apellido = Column(String)
     id_vehiculo = Column(Integer, ForeignKey('vehiculos.id_vehiculo'))
-    telefono = Column(Integer)
+    telefono = Column(String)
     observaciones = Column(String)
 
 def add_chofer_db(chofer):

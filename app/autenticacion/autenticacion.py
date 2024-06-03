@@ -4,14 +4,13 @@ from passlib.context import CryptContext # type: ignore
 
 # Clave secreta para firmar el token (asegúrate de mantenerla segura)
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-TOKEN_EXPIRATION = timedelta(hours = 1)
+TOKEN_EXPIRATION = timedelta(hours = 10)
 ALGORITHM = "HS256"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Función para generar el token
 def generate_token(user_id: int):
-    # Define el payload del token con la información del usuario
     payload = {
         "user_id": user_id,
         "exp": datetime.utcnow() + TOKEN_EXPIRATION

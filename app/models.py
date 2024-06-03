@@ -4,14 +4,20 @@ from shapely.geometry import LineString # type: ignore
 from datetime import datetime
 from enum import Enum
 
-class UsuarioCreate(BaseModel):
+class TipoUsuario(str, Enum):
+    operador = "operador"
+    chofer = "chofer"
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class Usuarios(BaseModel):
+    id_usuario: Optional[int] = None
     nombre_usuario: str
     hashed_password: str
     email: str
-    activo: bool
-
-class Usuarios(UsuarioCreate):
-    id_usuario: Optional[int]
+    rol: TipoUsuario
     token: Optional[str] = None
 
 class TipoCliente(str, Enum):
@@ -36,11 +42,16 @@ class ClientesCaracteristicas(BaseModel):
     id_cliente: int
     caracteristica: str
 
-class Pedidos(BaseModel):
-    id_pedido: Optional[int]
-    usuario_documento: int
+class PedidosCreate(BaseModel):
+    cliente_documento: int
     direccion_origen: str
     direccion_destino: str
+    prioridad: int
+    acompañante: bool
+    observaciones: Optional[str]
+
+class Pedidos(BaseModel):
+    id_pedido: Optional[int]
     latitud_origen: float
     latitud_destino: float
     longitud_origen: float
@@ -49,10 +60,6 @@ class Pedidos(BaseModel):
     ventana_origen_fin: Optional[datetime]
     ventana_destino_inicio: Optional[datetime]
     ventana_destino_fin: Optional[datetime]
-    hora_ingresado: datetime
-    prioridad: int
-    acompañante: bool
-    observaciones: Optional[str]
 
 class Vehiculos(BaseModel):
     id_vehiculo: Optional[int]
@@ -69,7 +76,7 @@ class VehiculosCaracteristicas(BaseModel):
     caracteristica: str
 
 class Choferes(BaseModel):
-    id_chofer: Optional[int]
+    id_chofer: Optional[int] = None
     documento: int
     nombre: str
     apellido: str

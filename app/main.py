@@ -1,8 +1,8 @@
 import logging
 from fastapi import FastAPI, Request, status # type: ignore
 from fastapi.middleware.cors import CORSMiddleware # type: ignore
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError # type: ignore
+from fastapi.responses import JSONResponse # type: ignore
 
 import database as db
 import routes as r

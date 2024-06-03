@@ -1,6 +1,7 @@
 {
     "version":"0.2.0",
     "configurations":[
+
        {
           "name":"Python: Remote Attach",
           "type":"debugpy",
@@ -12,7 +13,7 @@
           "pathMappings":[
              {
                 "localRoot":"${workspaceFolder}",
-                "remoteRoot":"."
+               "remoteRoot": "${workspaceFolder}"
              }
           ],
           "justMyCode":true
