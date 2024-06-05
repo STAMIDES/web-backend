@@ -34,9 +34,9 @@ def include_object(object, name, type_, reflected, compare_to):
     """
     if type_ == 'table' and (name in IGNORE_TABLES):
         return False
+    else:
+        return True
 
-    elif type_ == "column" :
-        return False
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -57,6 +57,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         include_object=include_object,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True
     )
 
     with context.begin_transaction():
@@ -78,7 +79,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata, include_object=include_object
+            connection=connection, target_metadata=target_metadata, include_object=include_object, compare_type=True
         )
 
         with context.begin_transaction():
