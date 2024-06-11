@@ -4,7 +4,8 @@ from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime
-
+import hashlib
+import random
 import autenticacion.autenticacion as aut
 
 SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
@@ -26,7 +27,7 @@ def get_db():
 class Usuarios(Base):
     __tablename__ = 'usuarios'
 
-    id_usuario = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     nombre_usuario = Column(String, unique=True)
     hashed_password = Column(String)
     email = Column(String)
@@ -69,7 +70,12 @@ def login(username: str, password: str):
         user.activo = True
         db.commit()
         return access_token
-    
+
+def user_exists(email: str):
+    with get_db() as db:
+        user = db.query(Usuarios).filter(Usuarios.email == email).first()
+        return user
+
 def logout(username: str):
     with get_db() as db:
         user = db.query(Usuarios).filter(Usuarios.nombre_usuario == username).first()
@@ -79,6 +85,54 @@ def logout(username: str):
         user.activo = False
         db.commit()
         return {"message": f"Usuario {username} deslogueado correctamente."}
+
+class UsuarioInvite(Base):
+    __tablename__ = 'invitaciones_usuarios'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
+    hash_link = Column(String, unique=True)
+    used = Column(Boolean, default=False)
+    nombre_usuario = Column(String)
+    email = Column(String)
+    rol = Column(String)
+
+INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
+INVITATION_BODY_TEMPLATE = """ Hola {nombre_usuario}, 
+Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
+ingresa aqui https://mides.com/account/{hash_link} para generar una contraseña y completar tu registro."""
+
+def generate_invitation(usuario_invite: UsuarioInvite):
+    try:
+        with get_db() as db:
+            counter = 0
+            while counter < 10:
+                hash_link = hashlib.sha256(f"{usuario_invite.email}{random.random()}".encode()).hexdigest()
+                existing_invitation = db.query(UsuarioInvite).filter(
+                    UsuarioInvite.hash_link == hash_link,
+                    UsuarioInvite.used == False
+                ).first()
+                if not existing_invitation:
+                    break
+                counter += 1
+
+            if counter >= 10:
+                return None
+            # Crear una nueva invitación
+            new_invitation = UsuarioInvite(
+                id_usuario=None,  # Ajusta según la lógica de tu aplicación
+                hash_link=hash_link,
+                email=usuario_invite.email,
+                rol=usuario_invite.rol
+            )
+            db.add(new_invitation)
+            db.commit()
+            db.refresh(new_invitation)
+            return hash_link
+    except Exception as e:
+        print(e)
+        return None
+        # Enviar correo
 
 # endregion
 class TipoCliente(Enum):

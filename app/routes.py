@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
 from models import (Pedidos, PedidosCreate, Clientes, ClientesCreate, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
-                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest)
+                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, UsuarioInvite)
 import database as db
 import autenticacion.autenticacion as aut
 from autenticacion.autenticacion_bearer import JWTBearer
 from datetime import datetime
 import logging
+from utils import Mailer
 
 log = logging.getLogger(__name__)
 # region Usuarios
@@ -26,6 +27,24 @@ def add_usuario(usuario: Usuarios):
     try:
         usuario = db.add_usuario_db(usuario)
         return {"usuario": usuario}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/invitar", dependencies=[Depends(JWTBearer())])
+def add_usuario(usuarioInv: UsuarioInvite):
+    try:
+        if not db.user_exists(usuarioInv.email):
+            # Enviar correo
+            hash_link = db.generate_invitation(usuarioInv)
+            if not hash_link:
+                return {'details': 'Error al generar la invitación', 'status': 'error'}
+            mailer = Mailer()
+            subject = db.INVITATION_SUBJECT_TEMPLATE
+            body = db.INVITATION_BODY_TEMPLATE.format(nombre_usuario=usuarioInv.nombre_usuario, hash_link=hash_link)
+            mailer.send(usuarioInv.email, subject, body)
+            return {'details': usuarioInv.nombre_usuario + ' ha sido invitado correctamente', 'status': 'success'}
+        else:
+            return {'details': 'El usuario ya existe', 'status': 'error'}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     

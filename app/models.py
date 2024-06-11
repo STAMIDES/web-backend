@@ -20,6 +20,11 @@ class Usuarios(BaseModel):
     rol: TipoUsuario
     token: Optional[str] = None
 
+class UsuarioInvite(BaseModel):
+    nombre_usuario: str
+    email: str
+    rol: TipoUsuario
+
 class TipoCliente(str, Enum):
     particular = "particular"
     dispositivo = "dispositivo"
