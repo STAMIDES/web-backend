@@ -13,7 +13,7 @@ class LoginRequest(BaseModel):
     password: str
 
 class Usuarios(BaseModel):
-    id_usuario: Optional[int] = None
+    id: Optional[int] = None
     nombre_usuario: str
     hashed_password: str
     email: str

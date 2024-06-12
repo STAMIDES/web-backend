@@ -134,6 +134,9 @@ def generate_invitation(usuario_invite: UsuarioInvite):
         return None
         # Enviar correo
 
+def get_invitation(hash_link: str):
+    with get_db() as db:
+        return db.query(UsuarioInvite).filter(UsuarioInvite.hash_link == hash_link, UsuarioInvite.used == False).first()
 # endregion
 class TipoCliente(Enum):
     particular = "particular"

@@ -22,7 +22,7 @@ def get_usuario(documento: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.post("/", dependencies=[Depends(JWTBearer())])
+@usuarios_router.post("/") # FIXME delete this endpoint and use the one below// this is for testing purposes
 def add_usuario(usuario: Usuarios):
     try:
         usuario = db.add_usuario_db(usuario)
@@ -32,7 +32,6 @@ def add_usuario(usuario: Usuarios):
 
 @usuarios_router.post("/invitar", dependencies=[Depends(JWTBearer())])
 def add_usuario(usuarioInv: UsuarioInvite):
-    try:
         if not db.user_exists(usuarioInv.email):
             # Enviar correo
             hash_link = db.generate_invitation(usuarioInv)
@@ -45,9 +44,17 @@ def add_usuario(usuarioInv: UsuarioInvite):
             return {'details': usuarioInv.nombre_usuario + ' ha sido invitado correctamente', 'status': 'success'}
         else:
             return {'details': 'El usuario ya existe', 'status': 'error'}
+        
+@usuarios_router.get("/crear/{hash_link}", dependencies=[Depends(JWTBearer())])
+def add_usuario(hash_link: str):
+    try:
+        usuarioInv = db.get_invitation(hash_link)
+        if not usuarioInv:
+            return {'details': 'Invitación no encontrada o ya usada', 'status': 'error'}
+        return {'invitacion': usuarioInv}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
+        
 @usuarios_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
 def update_usuario(documento: int, usuario: Usuarios):
     try:

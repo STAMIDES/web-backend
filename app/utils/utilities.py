@@ -4,24 +4,25 @@ from email.mime.multipart import MIMEMultipart
 
 sender_email = "midesmailsender@gmail.com"
 sender_password = "asjd312dsajnzxASD1112"
+app_password = "gwdd oubl wqbp aobm"
 
 class Mailer:
     def __init__(self):
         self.sender_email = sender_email
-        self.sender_password = sender_password
+        self.app_password = app_password
 
-def send(self, to_email, subject, body ):
+    def send(self, to_email, subject, body ):
 
-    message = MIMEMultipart()
-    message["From"] = self.sender_email
-    message["To"] = to_email
-    message["Subject"] = subject
+        message = MIMEMultipart()
+        message["From"] = self.sender_email
+        message["To"] = to_email
+        message["Subject"] = subject
 
-    message.attach(MIMEText(body, "plain"))
+        message.attach(MIMEText(body, "plain"))
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(self.sender_email, self.sender_password)
-            server.sendmail(sender_email, to_email, message.as_string())
-    except Exception as e:
-        print(f"Error al enviar el correo: {e}")
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(self.sender_email, self.app_password)
+                server.sendmail(sender_email, to_email, message.as_string())
+        except Exception as e:
+            print(f"Error al enviar el correo: {e}")
