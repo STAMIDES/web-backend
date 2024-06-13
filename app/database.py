@@ -133,9 +133,9 @@ def generate_invitation(usuario_invite: InvitacionUsuario):
 
             if counter >= 10:
                 return None
-            # Crear una nueva invitación
+
             new_invitation = InvitacionUsuario(
-                id_usuario=None,  # Ajusta según la lógica de tu aplicación
+                id_usuario=None,  
                 hash_link=hash_link,
                 email=usuario_invite.email,
                 rol=usuario_invite.rol
@@ -147,12 +147,12 @@ def generate_invitation(usuario_invite: InvitacionUsuario):
     except Exception as e:
         print(e)
         return None
-        # Enviar correo
 
-def get_invitation(hash_link: str, id=None):# id no requerido para el GET, pero si para el POST
+def get_invitation(hash_link: str, id=None):# id no requerido para el GET, pero si para el POST(mas eficiente y mas seguro)
     with get_db() as db:
-        return db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == hash_link, InvitacionUsuario.used == False,
-                                                    not id or InvitacionUsuario.id == id).first()
+        return db.query(InvitacionUsuario).filter(not id or InvitacionUsuario.id == id,
+                                                InvitacionUsuario.hash_link == hash_link, InvitacionUsuario.used == False,
+                                                    ).first()
 # endregion
 class TipoCliente(Enum):
     particular = "particular"
