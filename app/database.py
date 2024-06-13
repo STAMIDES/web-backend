@@ -28,17 +28,41 @@ class Usuarios(Base):
     __tablename__ = 'usuarios'
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre_usuario = Column(String, unique=True)
+    nombre = Column(String, unique=True)
     hashed_password = Column(String)
     email = Column(String)
     rol = Column(String)
     token = Column(String, nullable=True)
 
-def add_usuario_db(usuario):
+class InvitacionUsuario(Base):
+    __tablename__ = 'invitaciones_usuarios'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
+    hash_link = Column(String, unique=True)
+    used = Column(Boolean, default=False)
+    nombre = Column(String)
+    email = Column(String)
+    rol = Column(String)
+
+def add_usuario_db(usuario): #FIXME: REMOVER SOLO USADO PARA DEVELOPMENT, CREAR USUARIOS RAPIDAMENTE
     with get_db() as db:
         usuario.hashed_password = aut.get_password_hash(usuario.hashed_password)
         usuario_obj = Usuarios(**usuario.dict())
         db.add(usuario_obj)
+        db.commit()
+        db.refresh(usuario_obj)
+        return usuario_obj
+
+def registrar_usuario(usuarioInv, nuevo_user):
+    with get_db() as db:
+        hashed_password = aut.get_password_hash(nuevo_user.password)
+        usuario_obj = Usuarios(rol = usuarioInv.rol, email=usuarioInv.email, #Se usa rol y email de la invitación
+                               nombre=nuevo_user.nombre, hashed_password=hashed_password) # el nuevo usuario puede tener un nombre distinto al de la invitación
+        db.add(usuario_obj)
+        db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == usuarioInv.hash_link,
+                                           InvitacionUsuario.id ==nuevo_user.id_invitacion).update({"used": True,
+                                                                                                    "id_usuario": usuario_obj.id})
         db.commit()
         db.refresh(usuario_obj)
         return usuario_obj
@@ -86,31 +110,22 @@ def logout(username: str):
         db.commit()
         return {"message": f"Usuario {username} deslogueado correctamente."}
 
-class UsuarioInvite(Base):
-    __tablename__ = 'invitaciones_usuarios'
 
-    id = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
-    hash_link = Column(String, unique=True)
-    used = Column(Boolean, default=False)
-    nombre_usuario = Column(String)
-    email = Column(String)
-    rol = Column(String)
 
 INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
 INVITATION_BODY_TEMPLATE = """ Hola {nombre_usuario}, 
 Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
 ingresa aqui https://mides.com/account/{hash_link} para generar una contraseña y completar tu registro."""
 
-def generate_invitation(usuario_invite: UsuarioInvite):
+def generate_invitation(usuario_invite: InvitacionUsuario):
     try:
         with get_db() as db:
             counter = 0
             while counter < 10:
                 hash_link = hashlib.sha256(f"{usuario_invite.email}{random.random()}".encode()).hexdigest()
-                existing_invitation = db.query(UsuarioInvite).filter(
-                    UsuarioInvite.hash_link == hash_link,
-                    UsuarioInvite.used == False
+                existing_invitation = db.query(InvitacionUsuario).filter(
+                    InvitacionUsuario.hash_link == hash_link,
+                    InvitacionUsuario.used == False
                 ).first()
                 if not existing_invitation:
                     break
@@ -119,7 +134,7 @@ def generate_invitation(usuario_invite: UsuarioInvite):
             if counter >= 10:
                 return None
             # Crear una nueva invitación
-            new_invitation = UsuarioInvite(
+            new_invitation = InvitacionUsuario(
                 id_usuario=None,  # Ajusta según la lógica de tu aplicación
                 hash_link=hash_link,
                 email=usuario_invite.email,
@@ -134,9 +149,10 @@ def generate_invitation(usuario_invite: UsuarioInvite):
         return None
         # Enviar correo
 
-def get_invitation(hash_link: str):
+def get_invitation(hash_link: str, id=None):# id no requerido para el GET, pero si para el POST
     with get_db() as db:
-        return db.query(UsuarioInvite).filter(UsuarioInvite.hash_link == hash_link, UsuarioInvite.used == False).first()
+        return db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == hash_link, InvitacionUsuario.used == False,
+                                                    not id or InvitacionUsuario.id == id).first()
 # endregion
 class TipoCliente(Enum):
     particular = "particular"
