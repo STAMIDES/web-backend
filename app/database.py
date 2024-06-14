@@ -4,6 +4,8 @@ from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime
+import models as m
+from sqlalchemy import CheckConstraint # type: ignore
 
 import autenticacion.autenticacion as aut
 
@@ -23,15 +25,16 @@ def get_db():
         db.close()
 
 # region Usuarios
+
 class Usuarios(Base):
     __tablename__ = 'usuarios'
 
-    id_usuario = Column(Integer, primary_key=True, index=True)
-    nombre_usuario = Column(String, unique=True)
-    hashed_password = Column(String)
-    email = Column(String)
-    rol = Column(String)
-    token = Column(String, nullable=True)
+    id = Column(Integer, primary_key=True, index=True)
+    mail = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    nombre = Column(String)
+    rol = Column(SQLAEnum(m.TipoUsuario), nullable=False)
+    token = Column(String)
 
 def add_usuario_db(usuario):
     with get_db() as db:
@@ -42,68 +45,62 @@ def add_usuario_db(usuario):
         db.refresh(usuario_obj)
         return usuario_obj
     
-def get_usuario_db(nombre_usuario):
+def get_usuario_db(mail):
     with get_db() as db:
-        return db.query(Usuarios).filter(Usuarios.nombre_usuario == nombre_usuario).first()
+        return db.query(Usuarios).filter(Usuarios.mail == mail).first()
     
-def update_usuario_db(nombre_usuario, usuario):
+def update_usuario_db(mail, usuario):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.nombre_usuario == nombre_usuario).update(usuario.dict())
+        db.query(Usuarios).filter(Usuarios.mail == mail).update(usuario.dict())
         db.commit()
         return usuario
 
-def delete_usuario_db(nombre_usuario):
+def delete_usuario_db(mail):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.nombre_usuario == nombre_usuario).delete()
+        db.query(Usuarios).filter(Usuarios.mail == mail).delete()
         db.commit()
-        return {"message": f"Usuario con nombre de usuario {nombre_usuario} eliminado correctamente."}
+        return {"message": f"Usuario {mail} eliminado correctamente."}
 
 def login(username: str, password: str):
     with get_db() as db:
-        user = db.query(Usuarios).filter(Usuarios.nombre_usuario == username).first()
+        user = db.query(Usuarios).filter(Usuarios.mail == username).first()
         if not user or not aut.verify_password(password, user.hashed_password):
             return None
         # Si el usuario y la contraseña son válidos, generamos un token JWT
-        access_token = aut.generate_token(user.nombre_usuario)
+        access_token = aut.generate_token(user.mail)
         user.token = access_token
-        user.activo = True
         db.commit()
         return access_token
     
-def logout(username: str):
+def logout(mail: str):
     with get_db() as db:
-        user = db.query(Usuarios).filter(Usuarios.nombre_usuario == username).first()
+        user = db.query(Usuarios).filter(Usuarios.mail == mail).first()
         if not user:
             return None
         user.token = None
-        user.activo = False
         db.commit()
-        return {"message": f"Usuario {username} deslogueado correctamente."}
+        return {"message": f"Usuario {mail} deslogueado correctamente."}
 
 # endregion
-class TipoCliente(Enum):
-    particular = "particular"
-    dispositivo = "dispositivo"
-    salud = "salud"
 
 # region Clientes
+
 class Clientes(Base):
     __tablename__ = 'clientes'
 
-    id_cliente = Column(Integer, primary_key=True, index=True)
-    documento = Column(Integer, unique=True)
-    nombre = Column(String)
-    apellido = Column(String)
-    direccion = Column(String)
-    telefono = Column(Integer)
+    id = Column(Integer, primary_key=True, index=True)
+    documento = Column(Integer, unique=True, index=True, nullable=False)
+    nombre = Column(String, nullable=False)
+    apellido = Column(String, nullable=False)
+    direccion = Column(String, nullable=False)
+    telefono = Column(String)
+    email = Column(String)
+    tipo = Column(SQLAEnum(m.TipoCliente), nullable=False)
     observaciones = Column(String)
-    email = Column(String, nullable=True)
-    tipo = Column(SQLAEnum(TipoCliente), nullable=False)
 
-def add_cliente_db(cliente, direccion, telefono, email, observaciones):
+def add_cliente_db(cliente):
     with get_db() as db:
-        # Add client to the database
-        db_cliente = Clientes(**cliente.dict(), direccion=direccion, telefono=telefono, email=email, observaciones=observaciones)
+        db_cliente = Clientes(**cliente.dict())
         db.add(db_cliente)
         db.commit()
         db.refresh(db_cliente)
@@ -181,7 +178,7 @@ class ClientesCaracteristicas(Base):
     __tablename__ = 'clientes_caracteristicas'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_cliente = Column(Integer, ForeignKey('clientes.id_cliente'))
+    id_cliente = Column(Integer, ForeignKey('clientes.id'))
     caracteristica = Column(String)
 
 def add_cliente_caracteristica(cliente_caracteristica):
@@ -218,21 +215,12 @@ def delete_cliente_caracteristica(id_cliente):
 class Pedidos(Base):
     __tablename__ = 'pedidos'
 
-    id_pedido = Column(Integer, primary_key=True, index=True)
-    cliente_documento = Column(Integer, ForeignKey('clientes.documento'))
-    direccion_origen = Column(String)
-    direccion_destino = Column(String)
-    latitud_origen = Column(Float)
-    latitud_destino = Column(Float)
-    longitud_origen = Column(Float)
-    longitud_destino = Column(Float)
-    ventana_origen_inicio = Column(DateTime)
-    ventana_origen_fin = Column(DateTime)
-    ventana_destino_inicio = Column(DateTime)
-    ventana_destino_fin = Column(DateTime)
-    hora_ingresado = Column(DateTime)
-    prioridad = Column(Integer)
-    acompañante = Column(Boolean)
+    id = Column(Integer, primary_key=True, index=True)
+    cliente_documento = Column(Integer, ForeignKey('clientes.documento'), nullable=False)
+    prioridad = Column(Integer, nullable=False)
+    acompañante = Column(Boolean, nullable=False)
+    tipo = Column(SQLAEnum(m.TipoPedido), nullable=False)
+    fecha_ingresado = Column(DateTime, nullable=False)
     observaciones = Column(String)
 
 def add_pedido_db(pedido):
@@ -243,9 +231,12 @@ def add_pedido_db(pedido):
         db.refresh(pedido_obj)
         return pedido_obj
 
+# Obtinene un pedido y todas sus paradas asociadas
 def get_pedido_db(id_pedido):
     with get_db() as db:
-        return db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).first()
+        pedido = db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).first()
+        pedido.paradas = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).all().order_by(Paradas.posicion_en_pedido)
+        return pedido
 
 # Obtiene los pedidos desde skip hasta skip+limit
 def get_pedidos_db(skip: int = 0, limit: int = 100):
@@ -268,7 +259,6 @@ def get_pedidos_by_fecha_db(fecha_str: str, skip: int = 0, limit: int = 100):
                 func.date(Pedidos.ventana_destino_inicio) == fecha.date()
             ).offset(skip).limit(limit).all()
 
-
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
         db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).update(pedido.dict())
@@ -283,18 +273,64 @@ def delete_pedido_db(id_pedido):
     
 # endregion
 
+# region Paradas
+
+class Paradas(Base):
+    __tablename__ = 'paradas'
+
+    id_parada = Column(Integer, primary_key=True, index=True)
+    id_pedido = Column(Integer, ForeignKey('pedidos.id'), nullable=False)
+    posicion_en_pedido = Column(Integer, nullable=False)
+    direccion = Column(String, nullable=False)
+    latitud = Column(Float)
+    longitud = Column(Float)
+    ventana_horaria_inicio = Column(DateTime)
+    ventana_horaria_fin = Column(DateTime)
+    observaciones = Column(String)
+
+def add_parada_db(parada):
+    with get_db() as db:
+        parada_obj = Paradas(**parada.dict())
+        db.add(parada_obj)
+        db.commit()
+        db.refresh(parada_obj)
+        return parada_obj
+    
+def get_parada_db(id_parada):
+    with get_db() as db:
+        return db.query(Paradas).filter(Paradas.id_parada == id_parada).first()
+    
+def update_parada_db(id_parada, parada):
+    with get_db() as db:
+        db.query(Paradas).filter(Paradas.id_parada == id_parada).update(parada.dict())
+        db.commit()
+        return parada
+    
+def delete_parada_db(id_parada):
+    with get_db() as db:
+        db.query(Paradas).filter(Paradas.id_parada == id_parada).delete()
+        db.commit()
+        return {"message": f"Parada con ID {id_parada} eliminada correctamente."}
+
+# endregion
+
 # region Vehiculos
 class Vehiculos(Base):
     __tablename__ = 'vehiculos'
 
-    id_vehiculo = Column(Integer, primary_key=True, index=True)
-    matricula = Column(String, unique=True)
+    id = Column(Integer, primary_key=True, index=True)
+    matricula = Column(String, unique=True, nullable=False)
     descripcion = Column(String)
-    documento_chofer = Column(Integer, ForeignKey('choferes.documento'))
-    capacidad_convencional = Column(Integer)
-    capacidad_silla_de_ruedas = Column(Integer)
-    disponibilidad = Column(Boolean)
+    documento_chofer_habitual = Column(Integer, ForeignKey('choferes.documento'))
+    capacidad_convencional = Column(Integer, nullable=False)
+    capacidad_silla_de_ruedas = Column(Integer, nullable=False)
+    disponibilidad = Column(Boolean, nullable=False)
     observaciones = Column(String)
+
+    __table_args__ = (
+        CheckConstraint('capacidad_convencional > 0', name='capacidad_convencional_check'),
+        CheckConstraint('capacidad_silla_de_ruedas > 0', name='capacidad_silla_de_ruedas_check'),
+    )
 
 def add_vehiculo_db(vehiculo):
     with get_db() as db:
@@ -335,7 +371,7 @@ class VehiculosCaracteristicas(Base):
     __tablename__ = 'vehiculos_caracteristicas'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id_vehiculo'))
+    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id'))
     caracteristica = Column(String)
 
 def add_vehiculo_caracteristica(vehiculo_caracteristica):
@@ -368,11 +404,10 @@ def delete_vehiculo_caracteristica(id_vehiculo):
 class Choferes(Base):
     __tablename__ = 'choferes'
 
-    id_chofer = Column(Integer, primary_key=True, index=True)
-    documento = Column(Integer, unique=True)
-    nombre = Column(String)
-    apellido = Column(String)
-    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id_vehiculo'))
+    id = Column(Integer, primary_key=True, index=True)
+    documento = Column(Integer, unique=True, nullable=False)
+    nombre = Column(String, nullable=False)
+    apellido = Column(String, nullable=False)
     telefono = Column(String)
     observaciones = Column(String)
 
@@ -410,13 +445,13 @@ def delete_chofer_db(documento):
 class LugaresComunes(Base):
     __tablename__ = 'lugares_comunes'
 
-    id_lugar_comun = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String)
-    direccion = Column(String)
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    direccion = Column(String, nullable=False)
     latitud = Column(Float)
     longitud = Column(Float)
     observaciones = Column(String)
-    
+
 def add_lugar_comun_db(deposito):
     with get_db() as db:
         deposito_obj = LugaresComunes(**deposito.dict())
@@ -451,10 +486,10 @@ def delete_lugar_comun_db(id_deposito):
 class Planificaciones(Base):
     __tablename__ = 'planificaciones'
 
-    id_planificacion = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String)
-    fecha = Column(DateTime)
-    fechaCreacion = Column(DateTime)
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    fecha = Column(DateTime, nullable=False)
+    fecha_creacion = Column(DateTime, nullable=False)
     observaciones = Column(String)
 
 # Crea un planificación y dos turnos asociados
@@ -518,11 +553,11 @@ def delete_planificacion_db(id_planificacion):
 class Turnos(Base):
     __tablename__ = 'turnos'
 
-    id_turno = Column(Integer, primary_key=True, index=True)
-    id_planificacion = Column(Integer, ForeignKey('planificaciones.id_planificacion'))
-    descripcion = Column(String)
-    hora_inicio = Column(DateTime)
-    hora_fin = Column(DateTime)
+    id = Column(Integer, primary_key=True, index=True)
+    id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
+    descripcion = Column(String, nullable=False)
+    hora_inicio = Column(DateTime, nullable=False)
+    hora_fin = Column(DateTime, nullable=False)
 
 def add_turno_db(turno):
     with get_db() as db:
@@ -554,12 +589,12 @@ def delete_turno_db(id_turno):
 class Rutas(Base):
     __tablename__ = 'rutas'
 
-    id_ruta = Column(Integer, primary_key=True, index=True)
-    id_turno = Column(Integer, ForeignKey('turnos.id_turno'))
-    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id_vehiculo'))
-    id_chofer = Column(Integer, ForeignKey('choferes.id_chofer'))
-    hora_salida = Column(DateTime)
-    hora_llegada = Column(DateTime)
+    id = Column(Integer, primary_key=True, index=True)
+    id_turno = Column(Integer, ForeignKey('turnos.id'))
+    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id'))
+    id_chofer = Column(Integer, ForeignKey('choferes.id'))
+    hora_inicio = Column(DateTime, nullable=False)
+    hora_fin = Column(DateTime, nullable=False)
     geometria = Column(Geometry(geometry_type='LINESTRING', srid=4326))
     observaciones = Column(String)
 
@@ -594,15 +629,15 @@ def delete_ruta_db(id_ruta):
 class Visitas(Base):
     __tablename__ = 'visitas'
 
-    id_visita = Column(Integer, primary_key=True, index=True)
-    id_ruta = Column(Integer, ForeignKey('rutas.id_ruta'))
-    id_item = Column(Integer)
-    tipo_item = Column(String)
-    hora_llegada = Column(DateTime)
-    hora_salida = Column(DateTime)
-    estado = Column(String)
+    id = Column(Integer, primary_key=True, index=True)
+    id_ruta = Column(Integer, ForeignKey('rutas.id'))
+    id_item = Column(Integer, nullable=False)
+    tipo_item = Column(SQLAEnum(m.TipoItemVisita), nullable=False)
+    estado = Column(SQLAEnum(m.EstadoVisita), nullable=False)
+    hora_llegada = Column(DateTime, nullable=False)
+    hora_salida = Column(DateTime, nullable=False)
     observaciones = Column(String)
-
+    
 def add_visita_db(visita):
     with get_db() as db:
         visita_obj = Visitas(**visita.dict())
