@@ -14,9 +14,9 @@ class LoginRequest(BaseModel):
 
 class Usuarios(BaseModel):
     id: Optional[int] = None
-    nombre: str
-    hashed_password: str
     email: str
+    hashed_password: str
+    nombre: Optional[str] = None
     rol: TipoUsuario
     token: Optional[str] = None
 
@@ -34,82 +34,92 @@ class TipoCliente(str, Enum):
     particular = "particular"
     dispositivo = "dispositivo"
     salud = "salud"
-
-class ClientesCreate(BaseModel):
+ 
+class Clientes(BaseModel):
+    id: Optional[int] = None
     documento: int
     nombre: str
     apellido: str
-    tipo: TipoCliente
-    
-class Clientes(ClientesCreate):
     direccion: str
-    telefono: Optional[int]
-    email: Optional[str]
-    observaciones: Optional[str]
-    id_cliente: Optional[int]
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    tipo: TipoCliente
+    observaciones: Optional[str] = None
 
 class ClientesCaracteristicas(BaseModel):
+    id: Optional[int] = None
     id_cliente: int
-    caracteristica: str
+    caracteristica: str # esto debe ser una clave foránea de una tabla de características. hay que crear esa tabla con el modelo de abajo
 
-class PedidosCreate(BaseModel):
-    cliente_documento: int
-    direccion_origen: str
-    direccion_destino: str
-    prioridad: int
-    acompañante: bool
-    observaciones: Optional[str]
+class CaracteristicasClientes(BaseModel):
+    id: Optional[int] = None
+    nombre: str
+
+class TipoPedido(str, Enum):
+    solo_ida = "Solo ida"
+    solo_vuelta = "Solo vuelta"
+    ida_y_vuelta = "Ida y vuelta"
 
 class Pedidos(BaseModel):
-    id_pedido: Optional[int]
-    latitud_origen: float
-    latitud_destino: float
-    longitud_origen: float
-    longitud_destino: float
-    ventana_origen_inicio: Optional[datetime]
-    ventana_origen_fin: Optional[datetime]
-    ventana_destino_inicio: Optional[datetime]
-    ventana_destino_fin: Optional[datetime]
+    id: Optional[int] = None
+    cliente_documento: int
+    prioridad: int
+    acompañante: bool
+    tipo: TipoPedido
+    fecha_ingresado: datetime
+    observaciones: Optional[str] = None
+
+class Paradas(BaseModel):
+    id: Optional[int] = None
+    id_pedido: int
+    posicion_en_pedido: int
+    direccion: str
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    ventana_horaria_inicio: Optional[datetime] = None
+    ventana_horaria_fin: Optional[datetime] = None
+    observaciones: Optional[str] = None
 
 class Vehiculos(BaseModel):
-    id_vehiculo: Optional[int]
-    matricula: str
-    descripcion: Optional[str]
-    documento_chofer: Optional[int]
+    id: Optional[int] = None
+    matricula: Optional[str] = None
+    descripcion: Optional[str] = None
+    documento_chofer_habitual: Optional[int]
     capacidad_convencional: int = Field(..., gt=0)
     capacidad_silla_de_ruedas: int = Field(..., gt=0)
     disponibilidad: bool
     observaciones: Optional[str]
 
 class VehiculosCaracteristicas(BaseModel):
+    id: Optional[int] = None
     id_vehiculo: int
     caracteristica: str
 
 class Choferes(BaseModel):
-    id_chofer: Optional[int] = None
+    id: Optional[int] = None
     documento: int
     nombre: str
     apellido: str
-    telefono: Optional[str]
-    observaciones: Optional[str]
+    telefono: Optional[str] = None
+    observaciones: Optional[str] = None
 
 class LugaresComunes(BaseModel):
-    id_lugar_comun: Optional[int]
+    id: Optional[int] = None
     nombre: str
     direccion: str
-    latitud: float
-    longitud: float
-    observaciones: Optional[str]
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    observaciones: Optional[str] = None
 
 class Planificaciones(BaseModel):
-    id_planificacion: Optional[int]
+    id: Optional[int] = None
     nombre: str
     fecha: datetime
     fechaCreacion: datetime
-    observaciones: Optional[str]
+    observaciones: Optional[str] = None
 
 class Turnos(BaseModel):
-    id_turno: Optional[int]
+    id: Optional[int] = None
     id_planificacion: int
     descripcion: str
     hora_inicio: datetime
@@ -120,14 +130,14 @@ class Geometria(BaseModel):
     coordinates: List[List[float]]
 
 class Rutas(BaseModel):
-    id_ruta: Optional[int]
+    id: Optional[int] = None
     id_turno: int
     id_vehiculo: int
     id_chofer: int
-    hora_salida: datetime
-    hora_llegada: datetime
+    hora_inicio: datetime
+    hora_fin: datetime
     geometria: Geometria
-    observaciones: Optional[str]
+    observaciones: Optional[str] = None
 
 class EstadoVisita(str, Enum):
     pendiente = "Pendiente"
@@ -136,15 +146,15 @@ class EstadoVisita(str, Enum):
 
 class TipoItemVisita(str, Enum):
     lugar_comun = "Lugar común"
-    pedido = "Pedido"
+    parada = "Parada"
 
 class Visitas(BaseModel):
-    id_visita: Optional[int]
+    id: Optional[int] = None
     id_ruta: int
-    id_item: int
+    id_item: int # id del lugar común o de la parada
     tipo_item: TipoItemVisita
     hora_llegada: datetime
     hora_salida: datetime
     estado: EstadoVisita
-    observaciones: Optional[str]
+    observaciones: Optional[str] = None
 

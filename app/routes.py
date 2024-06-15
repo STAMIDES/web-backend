@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
-from models import (Pedidos, PedidosCreate, Clientes, ClientesCreate, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
+from models import (Pedidos, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario)
 import database as db
 import autenticacion.autenticacion as aut
@@ -12,10 +12,10 @@ log = logging.getLogger(__name__)
 # region Usuarios
 usuarios_router = APIRouter()
 
-@usuarios_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
-def get_usuario(documento: int):
+@usuarios_router.get("/{mail}", dependencies=[Depends(JWTBearer())])
+def get_usuario(mail: int):
     try:
-        usuario = db.get_usuario_db(documento)
+        usuario = db.get_usuario_db(mail)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
         return {"usuario": usuario}
@@ -78,19 +78,19 @@ def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
     # except Exception as e:
     #     raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@usuarios_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
-def update_usuario(documento: int, usuario: Usuarios):
+@usuarios_router.put("/{mail}", dependencies=[Depends(JWTBearer())])
+def update_usuario(mail: int, usuario: Usuarios):
     try:
-        db.update_usuario_db(documento, usuario)
+        db.update_usuario_db(mail, usuario)
         return {"usuario": usuario}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
-def delete_usuario(documento: int):
+@usuarios_router.delete("/{mail}", dependencies=[Depends(JWTBearer())])
+def delete_usuario(mail: int):
     try:
-        db.delete_usuario_db(documento)
-        return {"detail": f"Usuario con documento {documento} eliminado correctamente."}
+        db.delete_usuario_db(mail)
+        return {"detail": f"Usuario {mail} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -103,9 +103,9 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
-def logout(usuario: Usuarios):
+def logout(mail: str):
     try:
-        db.logout(usuario)
+        db.logout(mail)
         return {"detail": "Usuario desconectado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -176,13 +176,9 @@ def get_clientes_caracteristica(caracteristica: str):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.post("/", dependencies=[Depends(JWTBearer())])
-def add_cliente(cliente: ClientesCreate,
-                direccion= None,
-                telefono= None,
-                email= None,
-                observaciones= None):
+def add_cliente(cliente: Clientes):
     try:
-        db.add_cliente_db(cliente, direccion, telefono, email, observaciones)
+        db.add_cliente_db(cliente)
         return {"cliente": cliente}
     except Exception as e:
        print(e)
@@ -277,7 +273,7 @@ def get_pedidos_fecha(fecha: str):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @pedidos_router.post("/", dependencies=[Depends(JWTBearer())])
-def add_pedido(pedido: PedidosCreate):
+def add_pedido(pedido: Pedidos):
     try:
         db.add_pedido_db(pedido)
         return {"pedido": pedido}
