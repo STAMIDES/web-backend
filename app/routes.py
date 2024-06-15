@@ -184,8 +184,12 @@ def get_clientes_caracteristica(caracteristica: str):
 @clientes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_cliente(cliente: Clientes):
     try:
-        db.add_cliente_db(cliente)
-        return {"cliente": cliente}
+        if not db.get_cliente_db(cliente.documento):
+            db.add_cliente_db(cliente)
+            return {"cliente": cliente}
+        raise HTTPException(status_code=400, detail="El cliente ya existe.")
+    except HTTPException as e:
+        raise e
     except Exception as e:
        print(e)
        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
