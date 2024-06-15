@@ -32,7 +32,7 @@ class Usuarios(Base):
     __tablename__ = 'usuarios'
 
     id = Column(Integer, primary_key=True, index=True)
-    mail = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     nombre = Column(String)
     rol = Column(SQLAEnum(m.TipoUsuario), nullable=False)
@@ -42,11 +42,10 @@ class InvitacionUsuario(Base):
     __tablename__ = 'invitaciones_usuarios'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_usuario = Column(Integer, ForeignKey('usuarios.id'))
-    hash_link = Column(String, unique=True)
+    hash_link = Column(String, index=True, unique=True, nullable=False)
+    email = Column(String, index=True, unique=True, nullable=False)
     used = Column(Boolean, default=False)
     nombre = Column(String)
-    email = Column(String)
     rol = Column(String)
 
 def add_usuario_db(usuario): #FIXME: REMOVER SOLO USADO PARA DEVELOPMENT, CREAR USUARIOS RAPIDAMENTE
@@ -65,35 +64,38 @@ def registrar_usuario(usuarioInv, nuevo_user):
                                nombre=nuevo_user.nombre, hashed_password=hashed_password) # el nuevo usuario puede tener un nombre distinto al de la invitación
         db.add(usuario_obj)
         db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == usuarioInv.hash_link,
-                                           InvitacionUsuario.id ==nuevo_user.id_invitacion).update({"used": True,
-                                                                                                    "id_usuario": usuario_obj.id})
+                                          InvitacionUsuario.used==False ).update({"used": True})
         db.commit()
         db.refresh(usuario_obj)
         return usuario_obj
     
-def get_usuario_db(mail):
+def get_usuarios(skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Usuarios).filter(Usuarios.mail == mail).first()
+        return db.query(Usuarios).offset(skip).limit(limit).all(), db.query(Usuarios).count()
+
+def get_usuario_db(email):
+    with get_db() as db:
+        return db.query(Usuarios).filter(Usuarios.email == email).first()
     
-def update_usuario_db(mail, usuario):
+def update_usuario_db(email, usuario):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.mail == mail).update(usuario.dict())
+        db.query(Usuarios).filter(Usuarios.email == email).update(usuario.dict())
         db.commit()
         return usuario
 
-def delete_usuario_db(mail):
+def delete_usuario_db(email):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.mail == mail).delete()
+        db.query(Usuarios).filter(Usuarios.email == email).delete()
         db.commit()
-        return {"message": f"Usuario {mail} eliminado correctamente."}
+        return {"message": f"Usuario {email} eliminado correctamente."}
 
 def login(username: str, password: str):
     with get_db() as db:
-        user = db.query(Usuarios).filter(Usuarios.mail == username).first()
+        user = db.query(Usuarios).filter(Usuarios.email == username).first()
         if not user or not aut.verify_password(password, user.hashed_password):
             return None
         # Si el usuario y la contraseña son válidos, generamos un token JWT
-        access_token = aut.generate_token(user.mail)
+        access_token = aut.generate_token(user.email)
         user.token = access_token
         db.commit()
         return access_token
@@ -103,14 +105,14 @@ def user_exists(email: str):
         user = db.query(Usuarios).filter(Usuarios.email == email).first()
         return user
 
-def logout(mail: str):
+def logout(email: str):
     with get_db() as db:
-        user = user_exists(mail)
+        user = user_exists(email)
         if not user:
             return None
         user.token = None
         db.commit()
-        return {"message": f"Usuario {mail} deslogueado correctamente."}
+        return {"message": f"Usuario {email} deslogueado correctamente."}
 
 
 
@@ -137,9 +139,9 @@ def generate_invitation(usuario_invite: InvitacionUsuario):
                 return None
 
             new_invitation = InvitacionUsuario(
-                id_usuario=None,  
                 hash_link=hash_link,
                 email=usuario_invite.email,
+                nombre=usuario_invite.nombre,
                 rol=usuario_invite.rol
             )
             db.add(new_invitation)
@@ -150,11 +152,10 @@ def generate_invitation(usuario_invite: InvitacionUsuario):
         print(e)
         return None
 
-def get_invitation(hash_link: str, id=None):# id no requerido para el GET, pero si para el POST(mas eficiente y mas seguro)
+def get_invitation(hash_link: str):# id no requerido para el GET, pero si para el POST(mas eficiente y mas seguro)
     with get_db() as db:
-        return db.query(InvitacionUsuario).filter(not id or InvitacionUsuario.id == id,
-                                                InvitacionUsuario.hash_link == hash_link, InvitacionUsuario.used == False,
-                                                    ).first()
+        return db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == hash_link, 
+                                                  InvitacionUsuario.used == False,).first()
 # endregion
 
 # region Clientes

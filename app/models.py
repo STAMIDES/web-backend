@@ -21,12 +21,11 @@ class Usuarios(BaseModel):
     token: Optional[str] = None
 
 class InvitacionUsuario(BaseModel):
-    nombre_usuario: str
+    nombre: str
     email: str
     rol: TipoUsuario
 
 class RegistroUsuario(BaseModel):
-    id_invitacion: int
     nombre: str
     password: str
 

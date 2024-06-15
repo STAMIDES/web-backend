@@ -12,17 +12,25 @@ log = logging.getLogger(__name__)
 # region Usuarios
 usuarios_router = APIRouter()
 
-@usuarios_router.get("/{mail}", dependencies=[Depends(JWTBearer())])
-def get_usuario(mail: int):
+@usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
+def get_usuarios(skip: int = 0, limit: int = 10):
     try:
-        usuario = db.get_usuario_db(mail)
+        usuarios, total = db.get_usuarios(skip=skip, limit=limit)
+        return {"usuarios": usuarios, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@usuarios_router.get("/{email}", dependencies=[Depends(JWTBearer())])
+def get_usuario(email: int):
+    try:
+        usuario = db.get_usuario_db(email)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
         return {"usuario": usuario}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
-@usuarios_router.post("/") # FIXME delete this endpoint and use the one below// this is for testing purposes
+
+@usuarios_router.post("/") # FIXME delete this endpoint and create users by invitations// this is for testing purposes
 def add_usuario(usuario: Usuarios):
     try:
         usuario = db.add_usuario_db(usuario)
@@ -40,15 +48,13 @@ def invite_usuario(usuarioInv: InvitacionUsuario):
                 raise HTTPException(status_code=400, detail='Error al generar la invitación')
             mailer = Mailer()
             subject = db.INVITATION_SUBJECT_TEMPLATE
-            body = db.INVITATION_BODY_TEMPLATE.format(nombre_usuario=usuarioInv.nombre_usuario, hash_link=hash_link)
+            body = db.INVITATION_BODY_TEMPLATE.format(nombre_usuario=usuarioInv.nombre, hash_link=hash_link)
             mailer.send(usuarioInv.email, subject, body)
-            return {'detail': usuarioInv.nombre_usuario + ' ha sido invitado correctamente'}
+            return {'detail': usuarioInv.nombre + ' ha sido invitado correctamente'}
         else:
             raise HTTPException(status_code=400, detail='El usuario ya existe')
     except HTTPException as e:
         raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
         
 @usuarios_router.get("/registro/{hash_link}")
 def add_usuario(hash_link: str):
@@ -65,7 +71,7 @@ def add_usuario(hash_link: str):
 @usuarios_router.post("/registro/{hash_link}")
 def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
     # try:
-        usuarioInv = db.get_invitation(hash_link, nuevo_user.id_invitacion)
+        usuarioInv = db.get_invitation(hash_link)
         if not usuarioInv:
             raise HTTPException(status_code=400, detail='Invitación no existente o ya usada')
         log.info(nuevo_user)
@@ -78,19 +84,19 @@ def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
     # except Exception as e:
     #     raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@usuarios_router.put("/{mail}", dependencies=[Depends(JWTBearer())])
-def update_usuario(mail: int, usuario: Usuarios):
+@usuarios_router.put("/{email}", dependencies=[Depends(JWTBearer())])
+def update_usuario(email: int, usuario: Usuarios):
     try:
-        db.update_usuario_db(mail, usuario)
+        db.update_usuario_db(email, usuario)
         return {"usuario": usuario}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.delete("/{mail}", dependencies=[Depends(JWTBearer())])
-def delete_usuario(mail: int):
+@usuarios_router.delete("/{email}", dependencies=[Depends(JWTBearer())])
+def delete_usuario(email: int):
     try:
-        db.delete_usuario_db(mail)
-        return {"detail": f"Usuario {mail} eliminado correctamente."}
+        db.delete_usuario_db(email)
+        return {"detail": f"Usuario {email} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -103,9 +109,9 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
-def logout(mail: str):
+def logout(email: str):
     try:
-        db.logout(mail)
+        db.logout(email)
         return {"detail": "Usuario desconectado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -266,11 +272,8 @@ def get_pedidos():
 # Obtener pedidos por fecha
 @pedidos_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
 def get_pedidos_fecha(fecha: str):
-    try:
         pedidos = db.get_pedidos_by_fecha_db(fecha)
         return {"pedidos": pedidos}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @pedidos_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_pedido(pedido: Pedidos):
