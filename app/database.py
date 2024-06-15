@@ -278,7 +278,7 @@ def delete_pedido_db(id_pedido):
 class Paradas(Base):
     __tablename__ = 'paradas'
 
-    id_parada = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     id_pedido = Column(Integer, ForeignKey('pedidos.id'), nullable=False)
     posicion_en_pedido = Column(Integer, nullable=False)
     direccion = Column(String, nullable=False)
