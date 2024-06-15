@@ -4,6 +4,8 @@ from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime
+import hashlib
+import random
 import models as m
 from sqlalchemy import CheckConstraint # type: ignore
 
@@ -30,13 +32,23 @@ class Usuarios(Base):
     __tablename__ = 'usuarios'
 
     id = Column(Integer, primary_key=True, index=True)
-    mail = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     nombre = Column(String)
     rol = Column(SQLAEnum(m.TipoUsuario), nullable=False)
     token = Column(String)
 
-def add_usuario_db(usuario):
+class InvitacionUsuario(Base):
+    __tablename__ = 'invitaciones_usuarios'
+
+    id = Column(Integer, primary_key=True, index=True)
+    hash_link = Column(String, index=True, unique=True, nullable=False)
+    email = Column(String, index=True, unique=True, nullable=False)
+    used = Column(Boolean, default=False)
+    nombre = Column(String)
+    rol = Column(String)
+
+def add_usuario_db(usuario): #FIXME: REMOVER SOLO USADO PARA DEVELOPMENT, CREAR USUARIOS RAPIDAMENTE
     with get_db() as db:
         usuario.hashed_password = aut.get_password_hash(usuario.hashed_password)
         usuario_obj = Usuarios(**usuario.dict())
@@ -44,43 +56,106 @@ def add_usuario_db(usuario):
         db.commit()
         db.refresh(usuario_obj)
         return usuario_obj
-    
-def get_usuario_db(mail):
+
+def registrar_usuario(usuarioInv, nuevo_user):
     with get_db() as db:
-        return db.query(Usuarios).filter(Usuarios.mail == mail).first()
+        hashed_password = aut.get_password_hash(nuevo_user.password)
+        usuario_obj = Usuarios(rol = usuarioInv.rol, email=usuarioInv.email, #Se usa rol y email de la invitación
+                               nombre=nuevo_user.nombre, hashed_password=hashed_password) # el nuevo usuario puede tener un nombre distinto al de la invitación
+        db.add(usuario_obj)
+        db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == usuarioInv.hash_link,
+                                          InvitacionUsuario.used==False ).update({"used": True})
+        db.commit()
+        db.refresh(usuario_obj)
+        return usuario_obj
     
-def update_usuario_db(mail, usuario):
+def get_usuarios(skip: int = 0, limit: int = 100):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.mail == mail).update(usuario.dict())
+        return db.query(Usuarios).offset(skip).limit(limit).all(), db.query(Usuarios).count()
+
+def get_usuario_db(email):
+    with get_db() as db:
+        return db.query(Usuarios).filter(Usuarios.email == email).first()
+    
+def update_usuario_db(email, usuario):
+    with get_db() as db:
+        db.query(Usuarios).filter(Usuarios.email == email).update(usuario.dict())
         db.commit()
         return usuario
 
-def delete_usuario_db(mail):
+def delete_usuario_db(email):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.mail == mail).delete()
+        db.query(Usuarios).filter(Usuarios.email == email).delete()
         db.commit()
-        return {"message": f"Usuario {mail} eliminado correctamente."}
+        return {"message": f"Usuario {email} eliminado correctamente."}
 
 def login(username: str, password: str):
     with get_db() as db:
-        user = db.query(Usuarios).filter(Usuarios.mail == username).first()
+        user = db.query(Usuarios).filter(Usuarios.email == username).first()
         if not user or not aut.verify_password(password, user.hashed_password):
             return None
         # Si el usuario y la contraseña son válidos, generamos un token JWT
-        access_token = aut.generate_token(user.mail)
+        access_token = aut.generate_token(user.email)
         user.token = access_token
         db.commit()
         return access_token
-    
-def logout(mail: str):
+
+def user_exists(email: str):
     with get_db() as db:
-        user = db.query(Usuarios).filter(Usuarios.mail == mail).first()
+        user = db.query(Usuarios).filter(Usuarios.email == email).first()
+        return user
+
+def logout(email: str):
+    with get_db() as db:
+        user = user_exists(email)
         if not user:
             return None
         user.token = None
         db.commit()
-        return {"message": f"Usuario {mail} deslogueado correctamente."}
+        return {"message": f"Usuario {email} deslogueado correctamente."}
 
+
+
+INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
+INVITATION_BODY_TEMPLATE = """ Hola {nombre_usuario}, 
+Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
+ingresa aqui https://mides.com/account/{hash_link} para generar una contraseña y completar tu registro."""
+
+def generate_invitation(usuario_invite: InvitacionUsuario):
+    try:
+        with get_db() as db:
+            counter = 0
+            while counter < 10:
+                hash_link = hashlib.sha256(f"{usuario_invite.email}{random.random()}".encode()).hexdigest()
+                existing_invitation = db.query(InvitacionUsuario).filter(
+                    InvitacionUsuario.hash_link == hash_link,
+                    InvitacionUsuario.used == False
+                ).first()
+                if not existing_invitation:
+                    break
+                counter += 1
+
+            if counter >= 10:
+                return None
+
+            new_invitation = InvitacionUsuario(
+                hash_link=hash_link,
+                email=usuario_invite.email,
+                nombre=usuario_invite.nombre,
+                rol=usuario_invite.rol
+            )
+            db.add(new_invitation)
+            db.commit()
+            db.refresh(new_invitation)
+            return hash_link
+    except Exception as e:
+        print(e)
+        return None
+
+def get_invitation(hash_link: str):# id no requerido para el GET, pero si para el POST(mas eficiente y mas seguro)
+    with get_db() as db:
+        return db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == hash_link, 
+                                                  InvitacionUsuario.used == False,).first()
 # endregion
 
 # region Clientes
