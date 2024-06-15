@@ -31,7 +31,10 @@ services:
     depends_on:
       - db      # Si tu aplicación depende de PostgreSQL
     environment:
-      - POSTGRES_HOST=db   # Configura la variable de entorno para la conexión a PostgreSQL
+      - POSTGRES_HOST=db
+      - SENDER_EMAIL=${SENDER_EMAIL}
+      - SENDER_PASSWORD=${SENDER_PASSWORD}
+      - SENDER_APP_PASSWORD=${APP_PASSWORD}
     networks:
       - backend-network
     volumes:

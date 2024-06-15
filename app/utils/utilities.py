@@ -1,15 +1,15 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
-sender_email = "midesmailsender@gmail.com"
-sender_password = "asjd312dsajnzxASD1112"
-app_password = "gwdd oubl wqbp aobm"
+import os
+sender_email = os.environ.get("SENDER_EMAIL")
+sender_password = os.environ.get("SENDER_PASSWORD")
+sender_app_password = os.environ.get("SENDER_APP_PASSWORD")
 
 class Mailer:
     def __init__(self):
         self.sender_email = sender_email
-        self.app_password = app_password
+        self.sender_app_password = sender_app_password
 
     def send(self, to_email, subject, body ):
 
@@ -22,7 +22,7 @@ class Mailer:
 
         try:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(self.sender_email, self.app_password)
+                server.login(self.sender_email, self.sender_app_password)
                 server.sendmail(sender_email, to_email, message.as_string())
         except Exception as e:
             print(f"Error al enviar el correo: {e}")
