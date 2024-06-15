@@ -187,7 +187,7 @@ def add_cliente(cliente: Clientes):
         if not db.get_cliente_db(cliente.documento):
             db.add_cliente_db(cliente)
             return {"cliente": cliente}
-        raise HTTPException(status_code=400, detail="El cliente ya existe.")
+        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")
     except HTTPException as e:
         raise e
     except Exception as e:
