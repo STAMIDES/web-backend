@@ -14,7 +14,7 @@ class LoginRequest(BaseModel):
 
 class Usuarios(BaseModel):
     id: Optional[int] = None
-    email: str
+    mail: str
     hashed_password: str
     nombre: Optional[str] = None
     rol: TipoUsuario
