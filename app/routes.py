@@ -70,7 +70,7 @@ def add_usuario(hash_link: str):
 
 @usuarios_router.post("/registro/{hash_link}")
 def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
-    # try:
+    try:
         usuarioInv = db.get_invitation(hash_link)
         if not usuarioInv:
             raise HTTPException(status_code=400, detail='Invitación no existente o ya usada')
@@ -79,10 +79,10 @@ def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
             raise HTTPException(status_code=400, detail='La contraseña debe tener al menos 7 caracteres')
         db.registrar_usuario(usuarioInv, nuevo_user)
         return usuarioInv
-    # except HTTPException as e:
-    #     raise e
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.put("/{email}", dependencies=[Depends(JWTBearer())])
 def update_usuario(email: int, usuario: Usuarios):
@@ -122,11 +122,19 @@ def logout(email: str):
 clientes_router = APIRouter()
 
 @clientes_router.get("/{id}", dependencies=[Depends(JWTBearer())])
-def get_cliente_completo(id: int):
-        cliente, pedidos = db.get_cliente_completo(id)
+def get_cliente_completo(id: int, completo = False):
+    try:
+        cliente = db.get_cliente(id)
         if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+            raise HTTPException(status_code=400, detail="Cliente no encontrado.")
+        if not completo:
+            return {"cliente": cliente}
+        pedidos = db.get_pedidos_cliente(id)
         return {"cliente": cliente, "pedidos": pedidos}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_clientes():
@@ -171,7 +179,7 @@ def get_clientes_caracteristica(caracteristica: str):
 @clientes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_cliente(cliente: Clientes):
     try:
-        if not db.get_cliente_db(cliente.documento):
+        if not db.get_cliente(cliente.documento):
             db.add_cliente_db(cliente)
             return {"cliente": cliente}
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")

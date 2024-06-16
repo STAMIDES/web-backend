@@ -181,20 +181,16 @@ def add_cliente_db(cliente):
         db.refresh(db_cliente)
         return db_cliente
 
-def get_cliente_db(documento):
+def get_cliente(id):
     with get_db() as db:
         # Retrieve client from the database based on document
-        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        cliente = db.query(Clientes).filter(Clientes.id == id).first()
         return cliente
 
-# Obtiene y devuelve un cliente con sus características y pedidos asociados
-def get_cliente_completo(id):
+def get_pedidos_cliente(id):
     with get_db() as db:
-        # Retrieve client and their associated orders from the database based on document
-        cliente = db.query(Clientes).filter(Clientes.id == id).first()
-        # Retrieve orders associated with the client
-        pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == cliente.documento).all()
-        return cliente, pedidos
+        pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == id).all()
+        return pedidos
 
 # Obtiene los clientes desde skip hasta skip+limit
 def get_clientes_db(skip: int = 0, limit: int = 100):
