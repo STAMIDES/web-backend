@@ -41,7 +41,7 @@ class ClientesCaracteristicas(BaseModel):
     id_cliente: int
     caracteristica: str # esto debe ser una clave foránea de una tabla de características. hay que crear esa tabla con el modelo de abajo
 
-class CaracteristicasClientes(BaseModel):
+class Caracteristicas(BaseModel):
     id: Optional[int] = None
     nombre: str
 
