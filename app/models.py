@@ -14,11 +14,20 @@ class LoginRequest(BaseModel):
 
 class Usuarios(BaseModel):
     id: Optional[int] = None
-    email: str
+    mail: str
     hashed_password: str
     nombre: Optional[str] = None
     rol: TipoUsuario
     token: Optional[str] = None
+
+class InvitacionUsuario(BaseModel):
+    nombre: str
+    email: str
+    rol: TipoUsuario
+
+class RegistroUsuario(BaseModel):
+    nombre: str
+    password: str
 
 class TipoCliente(str, Enum):
     particular = "particular"

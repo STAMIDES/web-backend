@@ -1,47 +1,94 @@
 from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
 from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
-                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest)
+                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario) # type: ignore
 import database as db
 import autenticacion.autenticacion as aut
 from autenticacion.autenticacion_bearer import JWTBearer
 from datetime import datetime
 import logging
+from utils import Mailer
 
 log = logging.getLogger(__name__)
 # region Usuarios
 usuarios_router = APIRouter()
 
-@usuarios_router.get("/{mail}", dependencies=[Depends(JWTBearer())])
-def get_usuario(mail: int):
+@usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
+def get_usuarios(skip: int = 0, limit: int = 10):
     try:
-        usuario = db.get_usuario_db(mail)
+        usuarios, total = db.get_usuarios(skip=skip, limit=limit)
+        return {"usuarios": usuarios, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@usuarios_router.get("/{email}", dependencies=[Depends(JWTBearer())])
+def get_usuario(email: int):
+    try:
+        usuario = db.get_usuario_db(email)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
         return {"usuario": usuario}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
-@usuarios_router.post("/", dependencies=[Depends(JWTBearer())])
-def add_usuario(usuario: Usuarios):
+
+@usuarios_router.post("/invitar", dependencies=[Depends(JWTBearer())])
+def invite_usuario(usuarioInv: InvitacionUsuario):
     try:
-        usuario = db.add_usuario_db(usuario)
+        if not db.user_exists(usuarioInv.email):
+            # Enviar correo
+            hash_link = db.generate_invitation(usuarioInv)
+            if not hash_link:
+                raise HTTPException(status_code=400, detail='Error al generar la invitación')
+            mailer = Mailer()
+            subject = db.INVITATION_SUBJECT_TEMPLATE
+            body = db.INVITATION_BODY_TEMPLATE.format(nombre_usuario=usuarioInv.nombre, hash_link=hash_link)
+            mailer.send(usuarioInv.email, subject, body)
+            return {'detail': usuarioInv.nombre + ' ha sido invitado correctamente'}
+        else:
+            raise HTTPException(status_code=400, detail='El usuario ya existe')
+    except HTTPException as e:
+        raise e
+        
+@usuarios_router.get("/registro/{hash_link}")
+def add_usuario(hash_link: str): # type: ignore
+    try:
+        usuarioInv = db.get_invitation(hash_link)
+        if not usuarioInv:
+            raise HTTPException(status_code=400, detail='Invitación no existente o ya usada')
+        return usuarioInv
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/registro/{hash_link}")
+def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
+    try:
+        usuarioInv = db.get_invitation(hash_link)
+        if not usuarioInv:
+            raise HTTPException(status_code=400, detail='Invitación no existente o ya usada')
+        log.info(nuevo_user)
+        if len(nuevo_user.password) < 7:
+            raise HTTPException(status_code=400, detail='La contraseña debe tener al menos 7 caracteres')
+        db.registrar_usuario(usuarioInv, nuevo_user)
+        return usuarioInv
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.put("/{email}", dependencies=[Depends(JWTBearer())])
+def update_usuario(email: int, usuario: Usuarios):
+    try:
+        db.update_usuario_db(email, usuario)
         return {"usuario": usuario}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.put("/{mail}", dependencies=[Depends(JWTBearer())])
-def update_usuario(mail: int, usuario: Usuarios):
+@usuarios_router.delete("/{email}", dependencies=[Depends(JWTBearer())])
+def delete_usuario(email: int):
     try:
-        db.update_usuario_db(mail, usuario)
-        return {"usuario": usuario}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
-@usuarios_router.delete("/{mail}", dependencies=[Depends(JWTBearer())])
-def delete_usuario(mail: int):
-    try:
-        db.delete_usuario_db(mail)
-        return {"message": f"Usuario {mail} eliminado correctamente."}
+        db.delete_usuario_db(email)
+        return {"detail": f"Usuario {email} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -54,10 +101,10 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
-def logout(mail: str):
+def logout(email: str):
     try:
-        db.logout(mail)
-        return {"message": "Usuario desconectado correctamente"}
+        db.logout(email)
+        return {"detail": "Usuario desconectado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
@@ -66,23 +113,18 @@ def logout(mail: str):
 # region Clientes
 clientes_router = APIRouter()
 
-@clientes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
-def get_cliente(documento: int):
+@clientes_router.get("/{id}", dependencies=[Depends(JWTBearer())])
+def get_cliente_completo(id: int, completo = False):
     try:
-        cliente = db.get_cliente_db(documento)
+        cliente = db.get_cliente(id)
         if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-        return {"cliente": cliente}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
-@clientes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
-def get_cliente_completo(documento: int):
-    try:
-        cliente = db.get_cliente_completo_db(documento)
-        if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-        return {"cliente": cliente}
+            raise HTTPException(status_code=400, detail="Cliente no encontrado.")
+        if not completo:
+            return {"cliente": cliente}
+        pedidos = db.get_pedidos_cliente(cliente.documento)
+        return {"cliente": cliente, "pedidos": pedidos}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -129,8 +171,12 @@ def get_clientes_caracteristica(caracteristica: str, limit: int = 10, offset: in
 @clientes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_cliente(cliente: Clientes):
     try:
-        db.add_cliente_db(cliente)
-        return {"cliente": cliente}
+        if not db.get_cliente(cliente.documento):
+            db.add_cliente_db(cliente)
+            return {"cliente": cliente}
+        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")
+    except HTTPException as e:
+        raise e
     except Exception as e:
        print(e)
        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -147,7 +193,7 @@ def update_cliente(documento: int, cliente: Clientes):
 def delete_cliente(documento: int):
     try:
         db.delete_cliente_db(documento)
-        return {"message": f"Cliente con documento {documento} eliminado correctamente."}
+        return {"detail": f"Cliente con documento {documento} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -176,7 +222,7 @@ def update_cliente_caracteristica(documento: int, caracteristica: str):
     try:
         updated = db.update_cliente_caracteristica(documento, caracteristica)
         if updated:
-            return {"message": f"Característica actualizada correctamente para el documento {documento}"}
+            return {"detail": f"Característica actualizada correctamente para el documento {documento}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -186,7 +232,7 @@ def delete_cliente_caracteristica(documento: int):
     try:
         deleted = db.delete_cliente_caracteristica(documento)
         if deleted:
-            return {"message": f"Característica eliminada correctamente para el documento {documento}"}
+            return {"detail": f"Característica eliminada correctamente para el documento {documento}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -359,7 +405,7 @@ def update_vehiculo(id_vehiculo: int, vehiculo: Vehiculos):
 def delete_vehiculo(id_vehiculo: int):
     try:
         db.delete_vehiculo_db(id_vehiculo)
-        return {"message": f"Vehículo con ID {id_vehiculo} eliminado correctamente."}
+        return {"detail": f"Vehículo con ID {id_vehiculo} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
@@ -388,7 +434,7 @@ def update_vehiculo_caracteristica(id_vehiculo: int, caracteristica: str):
     try:
         updated = db.update_vehiculo_caracteristica(id_vehiculo, caracteristica)
         if updated:
-            return {"message": f"Característica actualizada correctamente para el vehículo con ID {id_vehiculo}"}
+            return {"detail": f"Característica actualizada correctamente para el vehículo con ID {id_vehiculo}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el vehículo con ID {id_vehiculo}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -398,7 +444,7 @@ def delete_vehiculo_caracteristica(id_vehiculo: int):
     try:
         deleted = db.delete_vehiculo_caracteristica(id_vehiculo)
         if deleted:
-            return {"message": f"Característica eliminada correctamente para el vehículo con ID {id_vehiculo}"}
+            return {"detail": f"Característica eliminada correctamente para el vehículo con ID {id_vehiculo}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el vehículo con ID {id_vehiculo}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -446,7 +492,7 @@ def update_chofer(documento: int, chofer: Choferes):
 def delete_chofer(documento: int):
     try:
         db.delete_chofer_db(documento)
-        return {"message": f"Chofer con documento {documento} eliminado correctamente."}
+        return {"detail": f"Chofer con documento {documento} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
@@ -493,7 +539,7 @@ def update_lugar_comun(id_lugar: int, lugar: LugaresComunes):
 def delete_lugar_comun(id_lugar: int):
     try:
         db.delete_lugar_comun_db(id_lugar)
-        return {"message": f"Lugar común con ID {id_lugar} eliminado correctamente."}
+        return {"detail": f"Lugar común con ID {id_lugar} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
@@ -539,7 +585,7 @@ def update_planificacion(id_planificacion: int, planificacion: Planificaciones):
 def delete_planificacion(id_planificacion: int):
     try:
         db.delete_planificacion_db(id_planificacion)
-        return {"message": f"Planificación con ID {id_planificacion} eliminada correctamente."}
+        return {"detail": f"Planificación con ID {id_planificacion} eliminada correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
@@ -578,7 +624,7 @@ def update_turno(id_turno: int, turno: Turnos):
 def delete_turno(id_turno: int):
     try:
         db.delete_turno_db(id_turno)
-        return {"message": f"Turno con ID {id_turno} eliminado correctamente."}
+        return {"detail": f"Turno con ID {id_turno} eliminado correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
@@ -617,7 +663,7 @@ def update_ruta(id_ruta: int, ruta: Rutas):
 def delete_ruta(id_ruta: int):
     try:
         db.delete_ruta_db(id_ruta)
-        return {"message": f"Ruta con ID {id_ruta} eliminada correctamente."}
+        return {"detail": f"Ruta con ID {id_ruta} eliminada correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
@@ -656,7 +702,7 @@ def update_visita(id_visita: int, visita: Visitas):
 def delete_visita(id_visita: int):
     try:
         db.delete_visita_db(id_visita)
-        return {"message": f"Visita con ID {id_visita} eliminada correctamente."}
+        return {"detail": f"Visita con ID {id_visita} eliminada correctamente."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
