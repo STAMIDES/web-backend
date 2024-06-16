@@ -129,7 +129,7 @@ def get_cliente_completo(id: int, completo = False):
             raise HTTPException(status_code=400, detail="Cliente no encontrado.")
         if not completo:
             return {"cliente": cliente}
-        pedidos = db.get_pedidos_cliente(id)
+        pedidos = db.get_pedidos_cliente(cliente.documento)
         return {"cliente": cliente, "pedidos": pedidos}
     except HTTPException as e:
         raise e

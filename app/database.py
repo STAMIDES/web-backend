@@ -187,9 +187,9 @@ def get_cliente(id):
         cliente = db.query(Clientes).filter(Clientes.id == id).first()
         return cliente
 
-def get_pedidos_cliente(id):
+def get_pedidos_cliente(documento):
     with get_db() as db:
-        pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == id).all()
+        pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == documento).all()
         return pedidos
 
 # Obtiene los clientes desde skip hasta skip+limit
