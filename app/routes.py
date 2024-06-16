@@ -121,25 +121,12 @@ def logout(email: str):
 # region Clientes
 clientes_router = APIRouter()
 
-@clientes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
-def get_cliente(documento: int):
-    try:
-        cliente = db.get_cliente_db(documento)
+@clientes_router.get("/{id}", dependencies=[Depends(JWTBearer())])
+def get_cliente_completo(id: int):
+        cliente, pedidos = db.get_cliente_completo(id)
         if not cliente:
             raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-        return {"cliente": cliente}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
-@clientes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
-def get_cliente_completo(documento: int):
-    try:
-        cliente = db.get_cliente_completo_db(documento)
-        if not cliente:
-            raise HTTPException(status_code=404, detail="Cliente no encontrado.")
-        return {"cliente": cliente}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+        return {"cliente": cliente, "pedidos": pedidos}
 
 @clientes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_clientes():

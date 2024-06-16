@@ -188,12 +188,12 @@ def get_cliente_db(documento):
         return cliente
 
 # Obtiene y devuelve un cliente con sus características y pedidos asociados
-def get_cliente_completo_db(documento):
+def get_cliente_completo(id):
     with get_db() as db:
         # Retrieve client and their associated orders from the database based on document
-        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        cliente = db.query(Clientes).filter(Clientes.id == id).first()
         # Retrieve orders associated with the client
-        pedidos = db.query(Pedidos).filter(Pedidos.usuario_documento == documento).all()
+        pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == cliente.documento).all()
         return cliente, pedidos
 
 # Obtiene los clientes desde skip hasta skip+limit
