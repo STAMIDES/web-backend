@@ -116,13 +116,13 @@ clientes_router = APIRouter()
 @clientes_router.get("/{id}", dependencies=[Depends(JWTBearer())])
 def get_cliente_completo(id: int, completo = False):
     try:
-        cliente = db.get_cliente(id)
+        if completo:
+            cliente = db.get_cliente_completo(id)
+        else:
+            cliente = db.get_cliente(id)
         if not cliente:
             raise HTTPException(status_code=400, detail="Cliente no encontrado.")
-        if not completo:
-            return {"cliente": cliente}
-        pedidos = db.get_pedidos_cliente(cliente.documento)
-        return {"cliente": cliente, "pedidos": pedidos}
+        return cliente
     except HTTPException as e:
         raise e
     except Exception as e:

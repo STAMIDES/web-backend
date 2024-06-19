@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
-from sqlalchemy.orm import sessionmaker # type: ignore
+from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime
 import hashlib
@@ -173,6 +173,14 @@ class Clientes(Base):
     tipo = Column(SQLAEnum(m.TipoCliente), nullable=False)
     observaciones = Column(String)
 
+    caracteristicas = relationship(
+        'Caracteristicas',
+        secondary='clientes_caracteristicas',
+        backref='clientes'
+    )
+
+    pedidos = relationship('Pedidos', back_populates='cliente')
+
 def add_cliente_db(cliente):
     with get_db() as db:
         db_cliente = Clientes(**cliente.dict())
@@ -183,16 +191,15 @@ def add_cliente_db(cliente):
 
 def get_cliente(id):
     with get_db() as db:
-        # Retrieve client from the database based on document
         cliente = db.query(Clientes).filter(Clientes.id == id).first()
         return cliente
-
-def get_pedidos_cliente(documento):
+    
+def get_cliente_completo(id):
     with get_db() as db:
-        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
-        if cliente:
-            cliente.caracteristicas = db.query(Caracteristicas).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.id_cliente == cliente.id).all()
-            cliente.pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == cliente.documento).all()
+        cliente = db.query(Clientes).options(
+            joinedload(Clientes.caracteristicas),  
+            joinedload(Clientes.pedidos),  
+        ).filter(Clientes.id == id).first()
         return cliente
 
 # Obtiene los clientes desde offset hasta offset+limit
@@ -313,6 +320,7 @@ class Pedidos(Base):
     tipo = Column(SQLAEnum(m.TipoPedido), nullable=False)
     fecha_ingresado = Column(DateTime, nullable=False)
     observaciones = Column(String)
+    cliente = relationship('Clientes', back_populates='pedidos')
 
 # Crea un pedido y sus paradas asociadas
 def add_pedido_db(pedido):
