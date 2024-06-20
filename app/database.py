@@ -68,10 +68,13 @@ def registrar_usuario(usuarioInv, nuevo_user):
         db.commit()
         db.refresh(usuario_obj)
         return usuario_obj
-    
+
+# Obtiene los usuarios desde offset hasta offset+limit, devuelve también la cantidad total de usuarios   
 def get_usuarios(skip: int = 0, limit: int = 100):
     with get_db() as db:
-        return db.query(Usuarios).offset(skip).limit(limit).all(), db.query(Usuarios).count()
+        usuarios = db.query(Usuarios).offset(skip).limit(limit).all()
+        usuarios.cantidad = db.query(Usuarios).count()
+        return usuarios
 
 def get_usuario_db(email):
     with get_db() as db:
@@ -181,13 +184,16 @@ class Clientes(Base):
 
     pedidos = relationship('Pedidos', back_populates='cliente')
 
+# Agrega un cliente y sus características asociadas
 def add_cliente_db(cliente):
     with get_db() as db:
-        db_cliente = Clientes(**cliente.dict())
-        db.add(db_cliente)
+        cliente_obj = Clientes(**cliente.dict())
+        db.add(cliente_obj)
         db.commit()
-        db.refresh(db_cliente)
-        return db_cliente
+        db.refresh(cliente_obj)
+        for caracteristica in cliente.caracteristicas:
+            add_cliente_caracteristica({"id_cliente": cliente_obj.id, "id_caracteristica": caracteristica})
+        return cliente_obj
 
 def get_cliente(id):
     with get_db() as db:
@@ -205,36 +211,36 @@ def get_cliente_completo(id):
 # Obtiene los clientes desde offset hasta offset+limit
 def get_clientes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
-        # Retrieve clients from the database with pagination
         clientes = db.query(Clientes).offset(offset).limit(limit).all()
+        clientes.cantidad = db.query(Clientes).count()
         return clientes
 
 # Obtiene los clientes cuyo documento contiene el valor de la variable documento al principio
 def get_clientes_by_documento_db(documento: int, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        # Retrieve clients from the database whose document starts with the given value
         clientes = db.query(Clientes).filter(cast(Clientes.documento, String).like(f'{documento}%')).offset(offset).limit(limit).all()
+        clientes.cantidad = db.query(Clientes).filter(cast(Clientes.documento, String).like(f'{documento}%')).count()
         return clientes
 
 # Obtiene los clientes cuyo nombre o apellido contienen el valor de la variable nombre_apellido
 def get_clientes_by_nombre_db(nombre: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        # Retrieve clients from the database whose name or last name contains the given value
         clientes = db.query(Clientes).filter((Clientes.nombre.ilike(f'%{nombre}%')) | (Clientes.apellido.ilike(f'%{nombre}%'))).offset(offset).limit(limit).all()
+        clientes.cantidad = db.query(Clientes).filter((Clientes.nombre.ilike(f'%{nombre}%')) | (Clientes.apellido.ilike(f'%{nombre}%'))).count()
         return clientes
 
 # Obtiene los clientes de un tipo específico
 def get_clientes_by_tipo_db(tipo_persona: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        # Retrieve clients from the database of a specific type
         clientes = db.query(Clientes).filter(Clientes.tipo_persona == tipo_persona).offset(offset).limit(limit).all()
+        clientes.cantidad = db.query(Clientes).filter(Clientes.tipo_persona == tipo_persona).count()
         return clientes
 
 # Obtiene los clientes con una característica específica
 def get_clientes_by_caracteristica_db(caracteristica: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        # Retrieve clients from the database with a specific characteristic
         clientes = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).offset(offset).limit(limit).all()
+        clientes.cantidad = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).count()
         return clientes
 
 def update_cliente_db(documento, cliente):
@@ -304,6 +310,7 @@ class Caracteristicas(Base):
 def get_caracteristicas_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         caracteristicas = db.query(Caracteristicas).offset(offset).limit(limit).all()
+        caracteristicas.cantidad = db.query(Caracteristicas).count()
         return caracteristicas
     
 # endregion
@@ -344,27 +351,37 @@ def get_pedido_db(id_pedido):
 # Obtiene los pedidos desde offset hasta offset+limit
 def get_pedidos_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Pedidos).offset(offset).limit(limit).all()
+        pedidos = db.query(Pedidos).offset(offset).limit(limit).all()
+        pedidos.cantidad = db.query(Pedidos).count()
+        return pedidos
 
 def get_pedidos_by_cliente_db(documento: int, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Pedidos).filter(Pedidos.cliente_documento == documento).offset(offset).limit(limit).all()
-
+        pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == documento).offset(offset).limit(limit).all()
+        pedidos.cantidad = db.query(Pedidos).filter(Pedidos.cliente_documento == documento).count()
+        return pedidos
+    
 # Obtiene los pedidos creados en un rango de fechas
 def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Pedidos).filter(Pedidos.hora_ingresado >= fecha_inicio, Pedidos.hora_ingresado <= fecha_fin).offset(offset).limit(limit).all()
+        pedidos = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).offset(offset).limit(limit).all()
+        pedidos.cantidad = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).count()
+        return pedidos
     
 # Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
 def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-        return db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
+        pedidos = db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
             join(Clientes, Pedidos.cliente_documento == Clientes.documento).\
             filter(
                 func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
                 func.date(Pedidos.ventana_destino_inicio) == fecha.date()
             ).offset(offset).limit(limit).all()
+        pedidos.cantidad = db.query(Pedidos).filter(
+            func.date(Pedidos.ventana_origen_inicio) == fecha.date(),
+            func.date(Pedidos.ventana_destino_inicio) == fecha.date()
+        ).count()
 
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
@@ -411,7 +428,9 @@ def get_parada_db(id_parada, ):
 
 def get_paradas_pedido_db(id_pedido, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Paradas).filter(Paradas.id_pedido == id_pedido).offset(offset).limit(limit).all().order_by(Paradas.posicion_en_pedido)
+        paradas = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).offset(offset).limit(limit).all().order_by(Paradas.posicion_en_pedido)
+        paradas.cantidad = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).count()
+        return paradas
 
 def update_parada_db(id_parada, parada):
     with get_db() as db:
@@ -449,12 +468,15 @@ class Vehiculos(Base):
         CheckConstraint('capacidad_silla_de_ruedas > 0', name='capacidad_silla_de_ruedas_check'),
     )
 
+# Agrega un vehículo y sus características asociadas
 def add_vehiculo_db(vehiculo):
     with get_db() as db:
         vehiculo_obj = Vehiculos(**vehiculo.dict())
         db.add(vehiculo_obj)
         db.commit()
         db.refresh(vehiculo_obj)
+        for caracteristica in vehiculo.caracteristicas:
+            add_vehiculo_caracteristica({"id_vehiculo": vehiculo_obj.id, "id_caracteristica": caracteristica})
         return vehiculo_obj
     
 def get_vehiculo_db(id_vehiculo):
@@ -463,7 +485,9 @@ def get_vehiculo_db(id_vehiculo):
 
 def get_vehiculos_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Vehiculos).offset(offset).limit(limit).all()
+        vehiculos = db.query(Vehiculos).offset(offset).limit(limit).all()
+        vehiculos.cantidad = db.query(Vehiculos).count()
+        return vehiculos
 
 def get_vehiculo_by_matricula_db(matricula):
     with get_db() as db:
@@ -542,7 +566,9 @@ def get_chofer_db(documento):
     
 def get_choferes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Choferes).offset(offset).limit(limit).all()
+        choferes = db.query(Choferes).offset(offset).limit(limit).all()
+        choferes.cantidad = db.query(Choferes).count()
+        return choferes
 
 def update_chofer_db(documento, chofer):
     with get_db() as db:
@@ -583,7 +609,9 @@ def get_lugar_comun_db(id_deposito):
 
 def get_lugares_comunes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(LugaresComunes).offset(offset).limit(limit).all()
+        lugares_comunes = db.query(LugaresComunes).offset(offset).limit(limit).all()
+        lugares_comunes.cantidad = db.query(LugaresComunes).count()
+        return lugares_comunes
 
 def update_lugar_comun_db(id_deposito, deposito):
     with get_db() as db:
@@ -640,17 +668,32 @@ def add_planificacion_db(planificacion):
         db.commit()
         db.refresh(planificacion_obj)
         return planificacion_obj
-    
+
+# Obtiene una planificación con sus turnos asociados, las rutas y visitas asociadas a los turnos,
+# paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
 def get_planificacion_db(id_planificacion):
     with get_db() as db:
-        return db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).first()
+        planificacion = db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).first()
+        planificacion.turnos = get_turnos_by_planificacion_db(id_planificacion)
+        for turno in planificacion.turnos:
+            turno.rutas = get_rutas_by_turno_db(turno.id_turno)
+            for ruta in turno.rutas:
+                ruta.visitas = get_visitas_by_ruta_db(ruta.id_ruta)
+                for visita in ruta.visitas:
+                    if visita.tipo_item == m.TipoItemVisita.parada:
+                        visita.item = get_parada_db(visita.id_item)
+                    elif visita.tipo_item == m.TipoItemVisita.lugar_comun:
+                        visita.item = get_lugar_comun_db(visita.id_item)
+                ruta.vehiculo = get_vehiculo_db(ruta.id_vehiculo)
+                ruta.chofer = get_chofer_db(ruta.id_chofer) #FIXME: Una ruta puede tener más de un chofer, uno por turno
+        return planificacion
     
 # Obtiene las planificaciones para un determinado día
 def get_planificaciones_by_fecha_db(fecha: DateTime, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        return db.query(Planificaciones).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
-
-# Obtiene una planificación con sus turnos asociados
+        planificaciones = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
+        planificaciones.cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
+        return planificaciones
 
 def update_planificacion_db(id_planificacion, planificacion):
     with get_db() as db:
@@ -687,7 +730,12 @@ def add_turno_db(turno):
 def get_turno_db(id_turno):
     with get_db() as db:
         return db.query(Turnos).filter(Turnos.id_turno == id_turno).first()
-    
+
+def get_turnos_by_planificacion_db(id_planificacion):
+    with get_db() as db:
+        turnos = db.query(Turnos).filter(Turnos.id_planificacion == id_planificacion).all()
+        return turnos
+
 def update_turno_db(id_turno, turno):
     with get_db() as db:
         db.query(Turnos).filter(Turnos.id_turno == id_turno).update(turno.dict())
@@ -726,7 +774,12 @@ def add_ruta_db(ruta):
 def get_ruta_db(id_ruta):
     with get_db() as db:
         return db.query(Rutas).filter(Rutas.id_ruta == id_ruta).first()
-    
+
+def get_rutas_by_turno_db(id_turno):
+    with get_db() as db:
+        rutas = db.query(Rutas).filter(Rutas.id_turno == id_turno).all()
+        return rutas
+
 def update_ruta_db(id_ruta, ruta):
     with get_db() as db:
         db.query(Rutas).filter(Rutas.id_ruta == id_ruta).update(ruta.dict())
@@ -766,7 +819,12 @@ def add_visita_db(visita):
 def get_visita_db(id_visita):
     with get_db() as db:
         return db.query(Visitas).filter(Visitas.id_visita == id_visita).first()
-    
+
+def get_visitas_by_ruta_db(id_ruta):
+    with get_db() as db:
+        visitas = db.query(Visitas).filter(Visitas.id_ruta == id_ruta).all()
+        return visitas
+
 def update_visita_db(id_visita, visita):
     with get_db() as db:
         db.query(Visitas).filter(Visitas.id_visita == id_visita).update(visita.dict())
