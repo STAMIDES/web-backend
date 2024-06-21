@@ -18,7 +18,7 @@ def get_usuarios(skip: int = 0, limit: int = 10):
         usuarios, total = db.get_usuarios(skip=skip, limit=limit)
         return {"usuarios": usuarios, "total": total}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @usuarios_router.get("/{email}", dependencies=[Depends(JWTBearer())])
@@ -29,7 +29,7 @@ def get_usuario(email: int):
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
         return {"usuario": usuario}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.post("/invitar", dependencies=[Depends(JWTBearer())])
@@ -60,7 +60,7 @@ def add_usuario(hash_link: str): # type: ignore
     except HTTPException as e:
         raise e
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.post("/registro/{hash_link}")
@@ -77,7 +77,7 @@ def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
     except HTTPException as e:
         raise e
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.put("/{email}", dependencies=[Depends(JWTBearer())])
@@ -86,7 +86,7 @@ def update_usuario(email: int, usuario: Usuarios):
         db.update_usuario_db(email, usuario)
         return {"usuario": usuario}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @usuarios_router.delete("/{email}", dependencies=[Depends(JWTBearer())])
@@ -95,7 +95,7 @@ def delete_usuario(email: int):
         db.delete_usuario_db(email)
         return {"detail": f"Usuario {email} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.post("/login")
@@ -112,7 +112,7 @@ def logout(email: str):
         db.logout(email)
         return {"detail": "Usuario desconectado correctamente"}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -143,7 +143,7 @@ def get_clientes(limit: int = 10, offset: int = 0):
         clientes = db.get_clientes_db(limit, offset)
         return {"clientes": clientes}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("/doc/{documento}", dependencies=[Depends(JWTBearer())])
@@ -152,7 +152,7 @@ def get_clientes_documento(documento: int, limit: int = 10, offset: int = 0):
         clientes = db.get_clientes_by_documento_db(documento, limit, offset)
         return {"clientes": clientes}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("/nombre/{nombre}", dependencies=[Depends(JWTBearer())])
@@ -161,7 +161,7 @@ def get_clientes_nombre(nombre: str, limit: int = 10, offset: int = 0):
         clientes = db.get_clientes_by_nombre_db(nombre, limit, offset)
         return {"clientes": clientes}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("tipo/{tipo}", dependencies=[Depends(JWTBearer())])
@@ -170,7 +170,7 @@ def get_clientes_tipo(tipo: str, limit: int = 10, offset: int = 0):
         clientes = db.get_clientes_by_tipo_db(tipo, limit, offset)
         return {"clientes": clientes}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.get("/caracteristica/{caracteristica}", dependencies=[Depends(JWTBearer())])
@@ -179,7 +179,7 @@ def get_clientes_caracteristica(caracteristica: str, limit: int = 10, offset: in
         clientes = db.get_clientes_by_caracteristica_db(caracteristica, limit, offset)
         return {"clientes": clientes}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -201,7 +201,7 @@ def update_cliente(documento: int, cliente: Clientes):
         db.update_cliente_db(documento, cliente)
         return {"cliente": cliente}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
@@ -210,7 +210,7 @@ def delete_cliente(documento: int):
         db.delete_cliente_db(documento)
         return {"detail": f"Cliente con documento {documento} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 # endregion
@@ -224,7 +224,7 @@ def add_cliente_caracteristica(persona_caracteristica: ClientesCaracteristicas):
         db.add_cliente_caracteristica(persona_caracteristica)
         return {"persona_caracteristica": persona_caracteristica}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_caracteristicas_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
@@ -242,7 +242,7 @@ def update_cliente_caracteristica(documento: int, caracteristica: str):
             return {"detail": f"Característica actualizada correctamente para el documento {documento}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_caracteristicas_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
@@ -253,7 +253,7 @@ def delete_cliente_caracteristica(documento: int):
             return {"detail": f"Característica eliminada correctamente para el documento {documento}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el documento {documento}")
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 # endregion
@@ -269,7 +269,7 @@ def get_caracteristicas(limit: int = 10, offset: int = 0):
             raise HTTPException(status_code=404, detail="Característica no encontrada.")
         return {"caracteristica": caracteristica}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -285,7 +285,7 @@ def get_pedido(id_pedido: int):
             raise HTTPException(status_code=404, detail="Pedido no encontrado.")
         return {"pedido": pedido}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.get("/", dependencies=[Depends(JWTBearer())])
@@ -294,7 +294,7 @@ def get_pedidos(limit: int = 10, offset: int = 0):
         pedidos = db.get_pedidos_db(limit, offset)
         return {"pedidos": pedidos}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.get("/cliente/{documento}", dependencies=[Depends(JWTBearer())])
@@ -303,7 +303,7 @@ def get_pedidos_cliente(documento: int, limit: int = 10, offset: int = 0):
         pedidos = db.get_pedidos_by_cliente_db(documento, limit, offset)
         return {"pedidos": pedidos}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
@@ -312,7 +312,7 @@ def get_pedidos_fecha(fecha: str, limit: int = 10, offset: int = 0):
         pedidos = db.get_pedidos_by_fecha_db(fecha, limit, offset)
         return {"pedidos": pedidos}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @pedidos_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -321,7 +321,7 @@ def add_pedido(pedido: Pedidos):
         db.add_pedido_db(pedido)
         return {"pedido": pedido}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.put("/{id_pedido}", dependencies=[Depends(JWTBearer())])
@@ -330,7 +330,7 @@ def update_pedido(id_pedido: int, pedido: Pedidos):
         db.update_pedido_db(id_pedido, pedido)
         return {"pedido": pedido}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.delete("/{id_pedido}", dependencies=[Depends(JWTBearer())])
@@ -339,7 +339,7 @@ def delete_pedido(id_pedido: int):
         db.delete_pedido_db(id_pedido)
         return {"message": f"Pedido con ID {id_pedido} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 # endregion
@@ -355,7 +355,7 @@ def get_parada(id_parada: int):
             raise HTTPException(status_code=404, detail="Parada no encontrada.")
         return {"parada": parada}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @paradas_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -364,7 +364,7 @@ def add_parada_pedido(parada: Paradas, pedido_id: int):
         db.add_parada_pedido_db(parada, pedido_id)
         return {"parada": parada}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @paradas_router.put("/{id_parada}", dependencies=[Depends(JWTBearer())])
@@ -373,7 +373,7 @@ def update_parada(id_parada: int, parada: Paradas):
         db.update_parada_db(id_parada, parada)
         return {"parada": parada}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @paradas_router.delete("/{id_parada}", dependencies=[Depends(JWTBearer())])
@@ -382,7 +382,7 @@ def delete_parada(id_parada: int):
         db.delete_parada_db(id_parada)
         return {"message": f"Parada con ID {id_parada} eliminada correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 # endregion
@@ -398,7 +398,7 @@ def get_vehiculo(id_vehiculo: int):
             raise HTTPException(status_code=404, detail="Vehículo no encontrado.")
         return {"vehiculo": vehiculo}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @vehiculos_router.get("/", dependencies=[Depends(JWTBearer())])
@@ -407,7 +407,7 @@ def get_vehiculos(limit: int = 10, offset: int = 0):
         vehiculos = db.get_vehiculos_db(limit, offset)
         return {"vehiculos": vehiculos}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @vehiculos_router.get("/matricula/{matricula}", dependencies=[Depends(JWTBearer())])
@@ -416,7 +416,7 @@ def get_vehiculo_matricula(matricula: str, limit: int = 10, offset: int = 0):
         vehiculos = db.get_vehiculo_by_matricula_db(matricula)
         return {"vehiculos": vehiculos}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @vehiculos_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -425,7 +425,7 @@ def add_vehiculo(vehiculo: Vehiculos):
         db.add_vehiculo_db(vehiculo)
         return {"vehiculo": vehiculo}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @vehiculos_router.put("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
@@ -434,7 +434,7 @@ def update_vehiculo(id_vehiculo: int, vehiculo: Vehiculos):
         db.update_vehiculo_db(id_vehiculo, vehiculo)
         return {"vehiculo": vehiculo}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @vehiculos_router.delete("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
@@ -443,7 +443,7 @@ def delete_vehiculo(id_vehiculo: int):
         db.delete_vehiculo_db(id_vehiculo)
         return {"detail": f"Vehículo con ID {id_vehiculo} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -457,7 +457,7 @@ def add_vehiculo_caracteristica(vehiculo_caracteristica: VehiculosCaracteristica
         db.add_vehiculo_caracteristica(vehiculo_caracteristica)
         return {"vehiculo_caracteristica": vehiculo_caracteristica}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @vehiculos_caracteristicas_router.get("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
@@ -475,7 +475,7 @@ def update_vehiculo_caracteristica(id_vehiculo: int, caracteristica: str):
             return {"detail": f"Característica actualizada correctamente para el vehículo con ID {id_vehiculo}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el vehículo con ID {id_vehiculo}")
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @vehiculos_caracteristicas_router.delete("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
@@ -486,7 +486,7 @@ def delete_vehiculo_caracteristica(id_vehiculo: int):
             return {"detail": f"Característica eliminada correctamente para el vehículo con ID {id_vehiculo}"}
         raise HTTPException(status_code=404, detail=f"No se encontró ninguna característica para el vehículo con ID {id_vehiculo}")
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -502,7 +502,7 @@ def get_chofer(documento: int):
             raise HTTPException(status_code=404, detail="Chofer no encontrado.")
         return {"chofer": chofer}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @choferes_router.get("/", dependencies=[Depends(JWTBearer())])
@@ -511,7 +511,7 @@ def get_choferes(limit: int = 10, offset: int = 0):
         choferes = db.get_choferes_db(limit, offset)
         return {"choferes": choferes}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @choferes_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -520,7 +520,7 @@ def add_chofer(chofer: Choferes):
         db.add_chofer_db(chofer)
         return {"chofer": chofer}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @choferes_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
@@ -529,7 +529,7 @@ def update_chofer(documento: int, chofer: Choferes):
         db.update_chofer_db(documento, chofer)
         return {"chofer": chofer}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @choferes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
@@ -538,7 +538,7 @@ def delete_chofer(documento: int):
         db.delete_chofer_db(documento)
         return {"detail": f"Chofer con documento {documento} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -554,7 +554,7 @@ def get_lugar_comun(id_lugar: int):
             raise HTTPException(status_code=404, detail="Lugar común no encontrado.")
         return {"lugar": lugar}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @lugares_comunes_router.get("/", dependencies=[Depends(JWTBearer())])
@@ -563,7 +563,7 @@ def get_lugares_comunes(limit: int = 10, offset: int = 0):
         lugares = db.get_lugares_comunes_db(limit, offset)
         return {"lugares": lugares}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @lugares_comunes_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -572,7 +572,7 @@ def add_lugar_comun(lugar: LugaresComunes):
         db.add_lugar_comun_db(lugar)
         return {"lugar": lugar}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @lugares_comunes_router.put("/{id_lugar}", dependencies=[Depends(JWTBearer())])
@@ -581,7 +581,7 @@ def update_lugar_comun(id_lugar: int, lugar: LugaresComunes):
         db.update_lugar_comun_db(id_lugar, lugar)
         return {"lugar": lugar}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @lugares_comunes_router.delete("/{id_lugar}", dependencies=[Depends(JWTBearer())])
@@ -590,7 +590,7 @@ def delete_lugar_comun(id_lugar: int):
         db.delete_lugar_comun_db(id_lugar)
         return {"detail": f"Lugar común con ID {id_lugar} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 # endregion
@@ -606,7 +606,7 @@ def get_planificacion(id_planificacion: int):
             raise HTTPException(status_code=404, detail="Planificación no encontrada.")
         return {"planificacion": planificacion}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 def get_planificaciones_fecha(fecha, limit: int = 10, offset: int = 0):
@@ -614,7 +614,7 @@ def get_planificaciones_fecha(fecha, limit: int = 10, offset: int = 0):
         planificaciones = db.get_planificaciones_by_fecha_db(fecha, limit, offset)
         return {"planificaciones": planificaciones}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @planificaciones_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -623,7 +623,7 @@ def add_planificacion(planificacion: Planificaciones):
         db.crear_planificacion(planificacion)
         return {"planificacion": planificacion}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @planificaciones_router.put("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
@@ -632,7 +632,7 @@ def update_planificacion(id_planificacion: int, planificacion: Planificaciones):
         db.update_planificacion_db(id_planificacion, planificacion)
         return {"planificacion": planificacion}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @planificaciones_router.delete("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
@@ -641,7 +641,7 @@ def delete_planificacion(id_planificacion: int):
         db.delete_planificacion_db(id_planificacion)
         return {"detail": f"Planificación con ID {id_planificacion} eliminada correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -657,7 +657,7 @@ def get_turno(id_turno: int):
             raise HTTPException(status_code=404, detail="Turno no encontrado.")
         return {"turno": turno}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @turnos_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -666,7 +666,7 @@ def add_turno(turno: Turnos):
         db.add_turno_db(turno)
         return {"turno": turno}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @turnos_router.put("/{id_turno}", dependencies=[Depends(JWTBearer())])
@@ -675,7 +675,7 @@ def update_turno(id_turno: int, turno: Turnos):
         db.update_turno_db(id_turno, turno)
         return {"turno": turno}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @turnos_router.delete("/{id_turno}", dependencies=[Depends(JWTBearer())])
@@ -684,7 +684,7 @@ def delete_turno(id_turno: int):
         db.delete_turno_db(id_turno)
         return {"detail": f"Turno con ID {id_turno} eliminado correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -700,7 +700,7 @@ def get_ruta(id_ruta: int):
             raise HTTPException(status_code=404, detail="Ruta no encontrada.")
         return {"ruta": ruta}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @rutas_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -709,7 +709,7 @@ def add_ruta(ruta: Rutas):
         db.add_ruta_db(ruta)
         return {"ruta": ruta}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @rutas_router.put("/{id_ruta}", dependencies=[Depends(JWTBearer())])
@@ -718,7 +718,7 @@ def update_ruta(id_ruta: int, ruta: Rutas):
         db.update_ruta_db(id_ruta, ruta)
         return {"ruta": ruta}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @rutas_router.delete("/{id_ruta}", dependencies=[Depends(JWTBearer())])
@@ -727,7 +727,7 @@ def delete_ruta(id_ruta: int):
         db.delete_ruta_db(id_ruta)
         return {"detail": f"Ruta con ID {id_ruta} eliminada correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion
@@ -743,7 +743,7 @@ def get_visita(id_visita: int):
             raise HTTPException(status_code=404, detail="Visita no encontrada.")
         return {"visita": visita}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @visitas_router.post("/", dependencies=[Depends(JWTBearer())])
@@ -752,7 +752,7 @@ def add_visita(visita: Visitas):
         db.add_visita_db(visita)
         return {"visita": visita}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @visitas_router.put("/{id_visita}", dependencies=[Depends(JWTBearer())])
@@ -761,7 +761,7 @@ def update_visita(id_visita: int, visita: Visitas):
         db.update_visita_db(id_visita, visita)
         return {"visita": visita}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @visitas_router.delete("/{id_visita}", dependencies=[Depends(JWTBearer())])
@@ -770,7 +770,7 @@ def delete_visita(id_visita: int):
         db.delete_visita_db(id_visita)
         return {"detail": f"Visita con ID {id_visita} eliminada correctamente."}
     except Exception as e:
-        log.info(traceback.format_exc())
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 # endregion

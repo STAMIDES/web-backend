@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler(sys.stdout)
 file_handler = logging.FileHandler('app.log', mode='a')
 
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(filename)s - %(lineno)d] - %(message)s')
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 
