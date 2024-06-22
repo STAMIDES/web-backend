@@ -128,15 +128,21 @@ class Geometria(BaseModel):
     type: str
     coordinates: List[List[float]]
 
+# Una ruta pertece a una planificación y tiene un vehículo asignado, puede pertenecer a varios turnos y tiene un chofer por turno
 class Rutas(BaseModel):
     id: Optional[int] = None
-    id_turno: int
+    id_planificacion: int
     id_vehiculo: int
-    id_chofer: int
     hora_inicio: datetime
     hora_fin: datetime
     geometria: Geometria
     observaciones: Optional[str] = None
+
+class RutasTurnos(BaseModel):
+    id: Optional[int] = None
+    id_ruta: int
+    id_turno: int
+    id_chofer: int
 
 class EstadoVisita(str, Enum):
     pendiente = "Pendiente"
