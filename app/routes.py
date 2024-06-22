@@ -49,7 +49,15 @@ def invite_usuario(usuarioInv: InvitacionUsuario):
             raise HTTPException(status_code=400, detail='El usuario ya existe')
     except HTTPException as e:
         raise e
-        
+
+@usuarios_router.post("/") # FIXME delete this endpoint and create users by invitations// this is for testing purposes
+def add_usuario(usuario: Usuarios):
+    try:
+        usuario = db.add_usuario_db(usuario)
+        return {"usuario": usuario}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+            
 @usuarios_router.get("/registro/{hash_link}")
 def add_usuario(hash_link: str): # type: ignore
     try:
