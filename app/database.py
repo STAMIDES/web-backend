@@ -669,24 +669,30 @@ def add_planificacion_db(planificacion):
         db.refresh(planificacion_obj)
         return planificacion_obj
 
-# Obtiene una planificación con sus turnos asociados, las rutas y visitas asociadas a los turnos,
+# Obtiene una planificación con sus turnos y rutas asociados, y las visitas asociadas a las rutas,
 # paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
-def get_planificacion_db(id_planificacion):
+def get_planificacion_db(id_planificacion: int):
     with get_db() as db:
-        planificacion = db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).first()
-        planificacion.turnos = get_turnos_by_planificacion_db(id_planificacion)
-        for turno in planificacion.turnos:
-            turno.rutas = get_rutas_by_turno_db(turno.id_turno)
-            for ruta in turno.rutas:
-                ruta.visitas = get_visitas_by_ruta_db(ruta.id_ruta)
-                for visita in ruta.visitas:
-                    if visita.tipo_item == m.TipoItemVisita.parada:
-                        visita.item = get_parada_db(visita.id_item)
-                    elif visita.tipo_item == m.TipoItemVisita.lugar_comun:
-                        visita.item = get_lugar_comun_db(visita.id_item)
-                ruta.vehiculo = get_vehiculo_db(ruta.id_vehiculo)
-                ruta.chofer = get_chofer_db(ruta.id_chofer) #FIXME: Una ruta puede tener más de un chofer, uno por turno
+        planificacion = db.query(Planificaciones).options(
+            joinedload(Planificaciones.turnos),
+            joinedload(Planificaciones.rutas)
+                .joinedload(Rutas.vehiculo)
+                .joinedload(Rutas.rutas_turnos)
+                .joinedload(RutasTurnos.chofer),
+            joinedload(Planificaciones.rutas)
+                .joinedload(Rutas.visitas)
+        ).filter(Planificaciones.id == id_planificacion).first()
+
+        # Completar las visitas con sus detalles
+        for ruta in planificacion.rutas:
+            for visita in ruta.visitas:
+                if visita.tipo_item == m.TipoItemVisita.parada:
+                    visita.item = db.query(Paradas).filter(Paradas.id == visita.id_item).first()
+                else:
+                    visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
+
         return planificacion
+
     
 # Obtiene las planificaciones para un determinado día
 def get_planificaciones_by_fecha_db(fecha: DateTime, limit: int = 100, offset: int = 0):
@@ -755,9 +761,8 @@ class Rutas(Base):
     __tablename__ = 'rutas'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_turno = Column(Integer, ForeignKey('turnos.id'))
+    id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
     id_vehiculo = Column(Integer, ForeignKey('vehiculos.id'))
-    id_chofer = Column(Integer, ForeignKey('choferes.id'))
     hora_inicio = Column(DateTime, nullable=False)
     hora_fin = Column(DateTime, nullable=False)
     geometria = Column(Geometry(geometry_type='LINESTRING', srid=4326))
@@ -775,9 +780,9 @@ def get_ruta_db(id_ruta):
     with get_db() as db:
         return db.query(Rutas).filter(Rutas.id_ruta == id_ruta).first()
 
-def get_rutas_by_turno_db(id_turno):
+def get_rutas_by_planificacion_db(id_planificacion):
     with get_db() as db:
-        rutas = db.query(Rutas).filter(Rutas.id_turno == id_turno).all()
+        rutas = db.query(Rutas).filter(Rutas.id_planificacion == id_planificacion).all()
         return rutas
 
 def update_ruta_db(id_ruta, ruta):
@@ -791,6 +796,46 @@ def delete_ruta_db(id_ruta):
         db.query(Rutas).filter(Rutas.id_ruta == id_ruta).delete()
         db.commit()
         return {"message": f"Ruta con ID {id_ruta} eliminada correctamente."}
+    
+# endregion
+
+# region RutasTurnos
+class RutasTurnos(Base):
+    __tablename__ = 'rutas_turnos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    id_ruta = Column(Integer, ForeignKey('rutas.id'))
+    id_turno = Column(Integer, ForeignKey('turnos.id'))
+    id_chofer = Column(Integer, ForeignKey('choferes.id'))
+
+def add_ruta_turno_db(ruta_turno):
+    with get_db() as db:
+        ruta_turno_obj = RutasTurnos(**ruta_turno.dict())
+        db.add(ruta_turno_obj)
+        db.commit()
+        db.refresh(ruta_turno_obj)
+        return ruta_turno_obj
+    
+def get_ruta_turno_db(id_ruta, id_turno):
+    with get_db() as db:
+        return db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta, RutasTurnos.id_turno == id_turno).first()
+    
+def get_ruta_turnos_by_ruta_db(id_ruta):
+    with get_db() as db:
+        ruta_turnos = db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta).all()
+        return ruta_turnos
+    
+def update_ruta_turno_db(id_ruta, id_turno, ruta_turno):
+    with get_db() as db:
+        db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta, RutasTurnos.id_turno == id_turno).update(ruta_turno.dict())
+        db.commit()
+        return ruta_turno
+    
+def delete_ruta_turno_db(id_ruta, id_turno):
+    with get_db() as db:
+        db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta, RutasTurnos.id_turno == id_turno).delete()
+        db.commit()
+        return {"message": f"Ruta-Turno con ID {id_ruta}-{id_turno} eliminada correctamente."}
     
 # endregion
 
