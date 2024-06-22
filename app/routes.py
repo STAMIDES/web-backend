@@ -15,8 +15,8 @@ usuarios_router = APIRouter()
 @usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_usuarios(skip: int = 0, limit: int = 10):
     try:
-        usuarios, total = db.get_usuarios(skip=skip, limit=limit)
-        return {"usuarios": usuarios, "total": total}
+        usuarios, cantidad = db.get_usuarios(skip=skip, limit=limit)
+        return {"usuarios": usuarios, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -140,8 +140,8 @@ def get_cliente_completo(id: int, completo = False):
 def get_clientes(limit: int = 10, offset: int = 0):
     try:
         log.info("Obteniendo clientes")
-        clientes = db.get_clientes_db(limit, offset)
-        return {"clientes": clientes}
+        clientes, cantidad = db.get_clientes_db(limit, offset)
+        return {"clientes": clientes, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -291,8 +291,8 @@ def get_pedido(id_pedido: int):
 @pedidos_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_pedidos(limit: int = 10, offset: int = 0):
     try:
-        pedidos = db.get_pedidos_db(limit, offset)
-        return {"pedidos": pedidos}
+        pedidos, cantidad = db.get_pedidos_db(limit, offset)
+        return {"pedidos": pedidos, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -309,8 +309,8 @@ def get_pedidos_cliente(documento: int, limit: int = 10, offset: int = 0):
 @pedidos_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
 def get_pedidos_fecha(fecha: str, limit: int = 10, offset: int = 0):
     try:
-        pedidos = db.get_pedidos_by_fecha_db(fecha, limit, offset)
-        return {"pedidos": pedidos}
+        pedidos, cantidad = db.get_pedidos_by_fecha_db(fecha, limit, offset)
+        return {"pedidos": pedidos, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -404,8 +404,8 @@ def get_vehiculo(id_vehiculo: int):
 @vehiculos_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_vehiculos(limit: int = 10, offset: int = 0):
     try:
-        vehiculos = db.get_vehiculos_db(limit, offset)
-        return {"vehiculos": vehiculos}
+        vehiculos, cantidad = db.get_vehiculos_db(limit, offset)
+        return {"vehiculos": vehiculos, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -508,8 +508,8 @@ def get_chofer(documento: int):
 @choferes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_choferes(limit: int = 10, offset: int = 0):
     try:
-        choferes = db.get_choferes_db(limit, offset)
-        return {"choferes": choferes}
+        choferes, cantidad = db.get_choferes_db(limit, offset)
+        return {"choferes": choferes, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -560,8 +560,8 @@ def get_lugar_comun(id_lugar: int):
 @lugares_comunes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_lugares_comunes(limit: int = 10, offset: int = 0):
     try:
-        lugares = db.get_lugares_comunes_db(limit, offset)
-        return {"lugares": lugares}
+        lugares, cantidad = db.get_lugares_comunes_db(limit, offset)
+        return {"lugares": lugares, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -611,8 +611,8 @@ def get_planificacion(id_planificacion: int):
     
 def get_planificaciones_fecha(fecha, limit: int = 10, offset: int = 0):
     try:
-        planificaciones = db.get_planificaciones_by_fecha_db(fecha, limit, offset)
-        return {"planificaciones": planificaciones}
+        planificaciones, cantidad = db.get_planificaciones_by_fecha_db(fecha, limit, offset)
+        return {"planificaciones": planificaciones, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
