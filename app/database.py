@@ -7,6 +7,9 @@ from datetime import datetime
 import hashlib
 import random
 import models as m
+import logging
+log = logging.getLogger(__name__)
+
 from sqlalchemy import CheckConstraint # type: ignore
 
 import autenticacion.autenticacion as aut
@@ -73,8 +76,8 @@ def registrar_usuario(usuarioInv, nuevo_user):
 def get_usuarios(skip: int = 0, limit: int = 100):
     with get_db() as db:
         usuarios = db.query(Usuarios).offset(skip).limit(limit).all()
-        usuarios.cantidad = db.query(Usuarios).count()
-        return usuarios
+        cantidad = db.query(Usuarios).count()
+        return usuarios, cantidad
 
 def get_usuario_db(email):
     with get_db() as db:
@@ -212,36 +215,37 @@ def get_cliente_completo(id):
 def get_clientes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         clientes = db.query(Clientes).offset(offset).limit(limit).all()
-        clientes.cantidad = db.query(Clientes).count()
-        return clientes
+        log.info(f"Clientes: {clientes}")
+        cantidad = db.query(Clientes).count()
+        return clientes, cantidad
 
 # Obtiene los clientes cuyo documento contiene el valor de la variable documento al principio
 def get_clientes_by_documento_db(documento: int, limit: int = 100, offset: int = 0):
     with get_db() as db:
         clientes = db.query(Clientes).filter(cast(Clientes.documento, String).like(f'{documento}%')).offset(offset).limit(limit).all()
-        clientes.cantidad = db.query(Clientes).filter(cast(Clientes.documento, String).like(f'{documento}%')).count()
-        return clientes
+        cantidad = db.query(Clientes).filter(cast(Clientes.documento, String).like(f'{documento}%')).count()
+        return clientes, cantidad
 
 # Obtiene los clientes cuyo nombre o apellido contienen el valor de la variable nombre_apellido
 def get_clientes_by_nombre_db(nombre: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         clientes = db.query(Clientes).filter((Clientes.nombre.ilike(f'%{nombre}%')) | (Clientes.apellido.ilike(f'%{nombre}%'))).offset(offset).limit(limit).all()
-        clientes.cantidad = db.query(Clientes).filter((Clientes.nombre.ilike(f'%{nombre}%')) | (Clientes.apellido.ilike(f'%{nombre}%'))).count()
-        return clientes
+        cantidad = db.query(Clientes).filter((Clientes.nombre.ilike(f'%{nombre}%')) | (Clientes.apellido.ilike(f'%{nombre}%'))).count()
+        return clientes, cantidad
 
 # Obtiene los clientes de un tipo específico
 def get_clientes_by_tipo_db(tipo_persona: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         clientes = db.query(Clientes).filter(Clientes.tipo_persona == tipo_persona).offset(offset).limit(limit).all()
-        clientes.cantidad = db.query(Clientes).filter(Clientes.tipo_persona == tipo_persona).count()
-        return clientes
+        cantidad = db.query(Clientes).filter(Clientes.tipo_persona == tipo_persona).count()
+        return clientes, cantidad
 
 # Obtiene los clientes con una característica específica
 def get_clientes_by_caracteristica_db(caracteristica: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         clientes = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).offset(offset).limit(limit).all()
-        clientes.cantidad = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).count()
-        return clientes
+        cantidad = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).count()
+        return clientes, cantidad
 
 def update_cliente_db(documento, cliente):
     with get_db() as db:
@@ -310,8 +314,8 @@ class Caracteristicas(Base):
 def get_caracteristicas_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         caracteristicas = db.query(Caracteristicas).offset(offset).limit(limit).all()
-        caracteristicas.cantidad = db.query(Caracteristicas).count()
-        return caracteristicas
+        cantidad = db.query(Caracteristicas).count()
+        return caracteristicas, cantidad
     
 # endregion
 
@@ -352,21 +356,21 @@ def get_pedido_db(id_pedido):
 def get_pedidos_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         pedidos = db.query(Pedidos).offset(offset).limit(limit).all()
-        pedidos.cantidad = db.query(Pedidos).count()
-        return pedidos
+        cantidad = db.query(Pedidos).count()
+        return pedidos, cantidad
 
 def get_pedidos_by_cliente_db(documento: int, limit: int = 100, offset: int = 0):
     with get_db() as db:
         pedidos = db.query(Pedidos).filter(Pedidos.cliente_documento == documento).offset(offset).limit(limit).all()
-        pedidos.cantidad = db.query(Pedidos).filter(Pedidos.cliente_documento == documento).count()
-        return pedidos
+        cantidad = db.query(Pedidos).filter(Pedidos.cliente_documento == documento).count()
+        return pedidos, cantidad
     
 # Obtiene los pedidos creados en un rango de fechas
 def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, limit: int = 100, offset: int = 0):
     with get_db() as db:
         pedidos = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).offset(offset).limit(limit).all()
-        pedidos.cantidad = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).count()
-        return pedidos
+        cantidad = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).count()
+        return pedidos, cantidad
     
 # Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
 def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
@@ -378,10 +382,11 @@ def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
                 func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
                 func.date(Pedidos.ventana_destino_inicio) == fecha.date()
             ).offset(offset).limit(limit).all()
-        pedidos.cantidad = db.query(Pedidos).filter(
+        cantidad = db.query(Pedidos).filter(
             func.date(Pedidos.ventana_origen_inicio) == fecha.date(),
             func.date(Pedidos.ventana_destino_inicio) == fecha.date()
         ).count()
+        return pedidos, cantidad
 
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
@@ -429,8 +434,8 @@ def get_parada_db(id_parada, ):
 def get_paradas_pedido_db(id_pedido, limit: int = 100, offset: int = 0):
     with get_db() as db:
         paradas = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).offset(offset).limit(limit).all().order_by(Paradas.posicion_en_pedido)
-        paradas.cantidad = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).count()
-        return paradas
+        cantidad = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).count()
+        return paradas, cantidad
 
 def update_parada_db(id_parada, parada):
     with get_db() as db:
@@ -486,8 +491,8 @@ def get_vehiculo_db(id_vehiculo):
 def get_vehiculos_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         vehiculos = db.query(Vehiculos).offset(offset).limit(limit).all()
-        vehiculos.cantidad = db.query(Vehiculos).count()
-        return vehiculos
+        cantidad = db.query(Vehiculos).count()
+        return vehiculos, cantidad
 
 def get_vehiculo_by_matricula_db(matricula):
     with get_db() as db:
@@ -567,8 +572,8 @@ def get_chofer_db(documento):
 def get_choferes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         choferes = db.query(Choferes).offset(offset).limit(limit).all()
-        choferes.cantidad = db.query(Choferes).count()
-        return choferes
+        cantidad = db.query(Choferes).count()
+        return choferes, cantidad
 
 def update_chofer_db(documento, chofer):
     with get_db() as db:
@@ -610,8 +615,8 @@ def get_lugar_comun_db(id_deposito):
 def get_lugares_comunes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         lugares_comunes = db.query(LugaresComunes).offset(offset).limit(limit).all()
-        lugares_comunes.cantidad = db.query(LugaresComunes).count()
-        return lugares_comunes
+        cantidad = db.query(LugaresComunes).count()
+        return lugares_comunes, cantidad
 
 def update_lugar_comun_db(id_deposito, deposito):
     with get_db() as db:
@@ -698,8 +703,8 @@ def get_planificacion_db(id_planificacion: int):
 def get_planificaciones_by_fecha_db(fecha: DateTime, limit: int = 100, offset: int = 0):
     with get_db() as db:
         planificaciones = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
-        planificaciones.cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
-        return planificaciones
+        cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
+        return planificaciones, cantidad
 
 def update_planificacion_db(id_planificacion, planificacion):
     with get_db() as db:

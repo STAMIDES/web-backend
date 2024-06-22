@@ -1,4 +1,5 @@
 import logging
+import sys
 from fastapi import FastAPI, Request, status # type: ignore
 from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from fastapi.exceptions import RequestValidationError # type: ignore
@@ -7,6 +8,21 @@ from fastapi.responses import JSONResponse # type: ignore
 import database as db
 import routes as r
 from database import Base
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler(sys.stdout)
+file_handler = logging.FileHandler('app.log', mode='a')
+
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(filename)s - %(lineno)d] - %(message)s')
+console_handler.setFormatter(formatter)
+file_handler.setFormatter(formatter)
+
+# Add handlers to the logger
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
 
 
 origins = [
