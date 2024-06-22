@@ -59,7 +59,7 @@ def add_usuario(usuario: Usuarios):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
             
 @usuarios_router.get("/registro/{hash_link}")
-def add_usuario(hash_link: str): # type: ignore
+def get_user_invitation(hash_link: str): # type: ignore
     try:
         usuarioInv = db.get_invitation(hash_link)
         if not usuarioInv:
@@ -72,7 +72,7 @@ def add_usuario(hash_link: str): # type: ignore
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @usuarios_router.post("/registro/{hash_link}")
-def add_usuario(hash_link: str, nuevo_user: RegistroUsuario):
+def add_usuario_by_inv(hash_link: str, nuevo_user: RegistroUsuario):
     try:
         usuarioInv = db.get_invitation(hash_link)
         if not usuarioInv:
