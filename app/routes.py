@@ -212,11 +212,11 @@ def update_cliente(documento: int, cliente: Clientes):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@clientes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
-def delete_cliente(documento: int):
+@clientes_router.delete("/{id}", dependencies=[Depends(JWTBearer())])
+def delete_cliente(id: int):
     try:
-        db.delete_cliente_db(documento)
-        return {"detail": f"Cliente con documento {documento} eliminado correctamente."}
+        db.delete_cliente_db(id)
+        return {"detail": f"Cliente eliminado correctamente."}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")

@@ -178,6 +178,7 @@ class Clientes(Base):
     email = Column(String)
     tipo = Column(SQLAEnum(m.TipoCliente), nullable=False)
     observaciones = Column(String)
+    activo = Column(Boolean, default=True)
 
     caracteristicas = relationship(
         'Caracteristicas',
@@ -214,7 +215,7 @@ def get_cliente_completo(id):
 # Obtiene los clientes desde offset hasta offset+limit
 def get_clientes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
-        clientes = db.query(Clientes).offset(offset).limit(limit).all()
+        clientes = db.query(Clientes).filter(Clientes.activo==True).offset(offset).limit(limit).all()
         log.info(f"Clientes: {clientes}")
         cantidad = db.query(Clientes).count()
         return clientes, cantidad
@@ -254,12 +255,12 @@ def update_cliente_db(documento, cliente):
         db.commit()
         return cliente
 
-def delete_cliente_db(documento):
+def delete_cliente_db(id):
     with get_db() as db:
         # Delete client from the database based on document
-        db.query(Clientes).filter(Clientes.documento == documento).delete()
+        db.query(Clientes).filter(Clientes.id == id).update({"activo": False})
         db.commit()
-        return {"message": f"Cliente con documento {documento} eliminado correctamente."}
+        return {"message": f"Cliente eliminado correctamente."}
 
 # endregion
 
