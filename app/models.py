@@ -44,6 +44,7 @@ class Clientes(BaseModel):
     email: Optional[str] = None
     tipo: TipoCliente
     observaciones: Optional[str] = None
+    caracteristicas: Optional[List[int]] = None
 
 class ClientesCaracteristicas(BaseModel):
     id: Optional[int] = None

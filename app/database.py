@@ -190,20 +190,42 @@ class Clientes(Base):
 
 # Agrega un cliente y sus características asociadas
 def add_cliente_db(cliente):
-    with get_db() as db:
-        cliente_obj = Clientes(**cliente.dict())
-        db.add(cliente_obj)
-        db.commit()
-        db.refresh(cliente_obj)
-        for caracteristica in cliente.caracteristicas:
-            add_cliente_caracteristica({"id_cliente": cliente_obj.id, "id_caracteristica": caracteristica})
-        return cliente_obj
+    try:
+        with get_db() as db:
+            cliente_data = cliente.dict()
+            caracteristicas = cliente_data.pop('caracteristicas', [])
+
+            cliente_obj = Clientes(**cliente_data)
+            db.add(cliente_obj)
+            db.flush()  
+
+            for caracteristica in caracteristicas:
+                cliente_caracteristica = ClientesCaracteristicas(
+                    id_cliente=cliente_obj.id,
+                    id_caracteristica=caracteristica
+                )
+                db.add(cliente_caracteristica)
+                db.flush()
+            db.commit() 
+            db.refresh(cliente_obj)  
+            return cliente_obj
+    except Exception as e:
+        db.rollback()  
+        raise e
+    finally:
+        db.close() 
+
 
 def get_cliente(id):
     with get_db() as db:
         cliente = db.query(Clientes).filter(Clientes.id == id).first()
         return cliente
-    
+
+def get_cliente_by_doc(documento):
+    with get_db() as db:
+        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        return cliente
+     
 def get_cliente_completo(id):
     with get_db() as db:
         cliente = db.query(Clientes).options(
@@ -315,9 +337,15 @@ class Caracteristicas(Base):
 def get_caracteristicas_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
         caracteristicas = db.query(Caracteristicas).offset(offset).limit(limit).all()
-        cantidad = db.query(Caracteristicas).count()
-        return caracteristicas, cantidad
-    
+        return caracteristicas
+
+def add_caracteristica_db(nombre):
+    with get_db() as db:
+        caracteristica = Caracteristicas(nombre=nombre)
+        db.add(caracteristica)
+        db.commit()
+        db.refresh(caracteristica)
+        return caracteristica
 # endregion
 
 # region Pedidos
