@@ -38,6 +38,7 @@ app.add_middleware(
 )
 Base.metadata.create_all(bind=db.engine) # En producción hay que sacar esto de acá
 app.include_router(r.clientes_router, prefix="/clientes")
+app.include_router(r.caracteristicas_router, prefix="/caracteristicas")
 app.include_router(r.clientes_caracteristicas_router, prefix="/clientes_caracteristicas")
 app.include_router(r.pedidos_router, prefix="/pedidos")
 app.include_router(r.vehiculos_router, prefix="/vehiculos")

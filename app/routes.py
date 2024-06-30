@@ -194,14 +194,14 @@ def get_clientes_caracteristica(caracteristica: str, limit: int = 10, offset: in
 @clientes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_cliente(cliente: Clientes):
     try:
-        if not db.get_cliente(cliente.documento):
+        if not db.get_cliente_by_doc(cliente.documento):
             db.add_cliente_db(cliente)
             return {"cliente": cliente}
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")
     except HTTPException as e:
         raise e
     except Exception as e:
-       print(e)
+       log.error(traceback.format_exc())
        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
@@ -213,11 +213,11 @@ def update_cliente(documento: int, cliente: Clientes):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@clientes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
-def delete_cliente(documento: int):
+@clientes_router.delete("/{id}", dependencies=[Depends(JWTBearer())])
+def delete_cliente(id: int):
     try:
-        db.delete_cliente_db(documento)
-        return {"detail": f"Cliente con documento {documento} eliminado correctamente."}
+        db.delete_cliente_db(id)
+        return {"detail": f"Cliente eliminado correctamente."}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -270,17 +270,22 @@ def delete_cliente_caracteristica(documento: int):
 # region Caracteristicas
 caracteristicas_router = APIRouter()
 
-@caracteristicas_router.get("/{id_caracteristica}", dependencies=[Depends(JWTBearer())])
+@caracteristicas_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_caracteristicas(limit: int = 10, offset: int = 0):
     try:
-        caracteristica = db.get_caracteristicas_db(limit, offset)
-        if not caracteristica:
-            raise HTTPException(status_code=404, detail="Característica no encontrada.")
+        return db.get_caracteristicas_db(limit, offset)
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@caracteristicas_router.post("/", dependencies=[Depends(JWTBearer())])
+def add_caracteristica(caracteristica: str):
+    try:
+        db.add_caracteristica_db(caracteristica)
         return {"caracteristica": caracteristica}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
 # endregion
 
 # region Pedidos
