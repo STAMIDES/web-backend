@@ -372,20 +372,12 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
         cantidad = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).count()
         return pedidos, cantidad
     
-# Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
+# Obtiene los pedidos tales que la fecha de sus paradas es en un determinado día
 def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-        pedidos = db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
-            join(Clientes, Pedidos.cliente_documento == Clientes.documento).\
-            filter(
-                func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
-                func.date(Pedidos.ventana_destino_inicio) == fecha.date()
-            ).offset(offset).limit(limit).all()
-        cantidad = db.query(Pedidos).filter(
-            func.date(Pedidos.ventana_origen_inicio) == fecha.date(),
-            func.date(Pedidos.ventana_destino_inicio) == fecha.date()
-        ).count()
+        pedidos = db.query(Pedidos).join(Paradas).filter(func.date(Paradas.ventana_horaria_inicio) == fecha).offset(offset).limit(limit).all()
+        cantidad = db.query(Pedidos).join(Paradas).filter(func.date(Paradas.ventana_horaria_inicio) == fecha).count()
         return pedidos, cantidad
 
 def update_pedido_db(id_pedido, pedido):

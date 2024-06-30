@@ -9,6 +9,7 @@ import logging
 from utils import Mailer
 import traceback
 log = logging.getLogger("routes")
+
 # region Usuarios
 usuarios_router = APIRouter()
 
