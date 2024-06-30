@@ -3,7 +3,8 @@ from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
-from datetime import datetime
+from datetime import datetime, timedelta
+from fastapi import HTTPException
 import hashlib
 import random
 import models as m
@@ -40,7 +41,19 @@ class Usuarios(Base):
     nombre = Column(String)
     rol = Column(SQLAEnum(m.TipoUsuario), nullable=False)
     token = Column(String)
+    refresh_tokens = relationship("RefreshToken", back_populates="user")
 
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuarios.id"))
+    is_revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True))
+
+    user = relationship("Usuarios", back_populates="refresh_tokens")
 class InvitacionUsuario(Base):
     __tablename__ = 'invitaciones_usuarios'
 
@@ -101,26 +114,69 @@ def login(username: str, password: str):
         if not user or not aut.verify_password(password, user.hashed_password):
             return None
         # Si el usuario y la contraseña son válidos, generamos un token JWT
-        access_token = aut.generate_token(user.email)
+        access_token = aut.create_access_token(data={"sub": user.email})
+        refresh_token = aut.create_refresh_token(data={"sub": user.email})
         user.token = access_token
+        new_ref_token = RefreshToken(user_id=user.id, token=refresh_token, expires_at=datetime.utcnow() + timedelta(days=aut.REFRESH_TOKEN_EXPIRE_DAYS))
+        db.add(new_ref_token)
         db.commit()
-        return access_token
+        return access_token, refresh_token
 
-def user_exists(email: str):
+def get_user_by_email(email: str):
     with get_db() as db:
         user = db.query(Usuarios).filter(Usuarios.email == email).first()
         return user
 
-def logout(email: str):
+def logout(refresh_token: str, email: str):
     with get_db() as db:
-        user = user_exists(email)
+        user = get_user_by_email(email)
         if not user:
-            return None
+            raise HTTPException(status_code=404, detail=f"User with email {email} not found")
+        
+        db_token = get_refresh_token(refresh_token)
+        if db_token:
+            db_token.is_revoked = True
+        else:
+            log.error(f"Warning: Refresh token not found for user {email}")
+
         user.token = None
+        
         db.commit()
-        return {"message": f"Usuario {email} deslogueado correctamente."}
+        return {"message": f"User {email} successfully logged out."}
 
 
+def store_refresh_token(user_id: int, refresh_token: str):
+    with get_db() as db:
+        # You might want to create a new table for refresh tokens
+        new_token = RefreshToken(user_id=user_id, token=refresh_token)
+        db.add(new_token)
+        db.commit()
+
+def store_refresh_token(user_id: int, refresh_token: str, expires_delta: timedelta):
+    with get_db() as db:
+        db_token = RefreshToken(
+            token=refresh_token,
+            user_id=user_id,
+            expires_at=datetime.utcnow() + expires_delta
+        )
+        db.add(db_token)
+        db.commit()
+        db.refresh(db_token)
+        return db_token
+
+def get_refresh_token(token: str):
+    with get_db() as db:
+        return db.query(RefreshToken).filter(RefreshToken.token == token).first()
+
+
+def is_refresh_token_valid(user_id: int, refresh_token: str):
+    with get_db() as db:
+        token = db.query(RefreshToken).filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.token == refresh_token,
+            RefreshToken.is_revoked == False
+        ).first()
+        return token is not None
 
 INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
 INVITATION_BODY_TEMPLATE = """ Hola {nombre_usuario}, 
