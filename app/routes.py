@@ -332,8 +332,8 @@ def get_pedidos_fecha(fecha: str, limit: int = 10, offset: int = 0):
 @pedidos_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_pedido(pedido: Pedidos):
     try:
-        db.add_pedido_db(pedido)
-        return {"pedido": pedido}
+        p = db.add_pedido_db(pedido)
+        return {"pedido": p}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")

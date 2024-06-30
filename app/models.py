@@ -60,6 +60,17 @@ class TipoPedido(str, Enum):
     solo_vuelta = "Solo vuelta"
     ida_y_vuelta = "Ida y vuelta"
 
+class Paradas(BaseModel):
+    id: Optional[int] = None
+    id_pedido: Optional[int] = None
+    posicion_en_pedido: int
+    direccion: str
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    ventana_horaria_inicio: Optional[datetime] = None
+    ventana_horaria_fin: Optional[datetime] = None
+    observaciones: Optional[str] = None
+
 class Pedidos(BaseModel):
     id: Optional[int] = None
     cliente_documento: int
@@ -68,17 +79,7 @@ class Pedidos(BaseModel):
     tipo: TipoPedido
     fecha_ingresado: datetime
     observaciones: Optional[str] = None
-
-class Paradas(BaseModel):
-    id: Optional[int] = None
-    id_pedido: int
-    posicion_en_pedido: int
-    direccion: str
-    latitud: Optional[float] = None
-    longitud: Optional[float] = None
-    ventana_horaria_inicio: Optional[datetime] = None
-    ventana_horaria_fin: Optional[datetime] = None
-    observaciones: Optional[str] = None
+    paradas: List[Paradas]
 
 class Vehiculos(BaseModel):
     id: Optional[int] = None

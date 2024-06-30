@@ -361,17 +361,25 @@ class Pedidos(Base):
     fecha_ingresado = Column(DateTime, nullable=False)
     observaciones = Column(String)
     cliente = relationship('Clientes', back_populates='pedidos')
+    paradas = relationship('Paradas', back_populates='pedido', cascade="all, delete-orphan")
 
 # Crea un pedido y sus paradas asociadas
 def add_pedido_db(pedido):
     with get_db() as db:
-        pedido_obj = Pedidos(**pedido.dict())
+        pedido_obj = pedido.dict()
+        paradas = pedido_obj.pop('paradas', [])
+        pedido_obj = Pedidos(**pedido_obj)
         db.add(pedido_obj)
+        db.flush()
+        paradas_obj = []
+        for parada in paradas:           
+            parada_obj = Paradas(**parada)
+            parada_obj.id_pedido = pedido_obj.id
+            db.add(parada_obj)
+            db.flush()
+            paradas_obj.append(parada_obj)
         db.commit()
-        db.refresh(pedido_obj)
-        for parada in pedido.paradas:
-            add_parada_pedido_db(parada, pedido_obj.id_pedido)
-            pedido_obj.paradas.append(parada)
+        pedido_obj.paradas = paradas_obj
         return pedido_obj
 
 # Obtinene un pedido y todas sus paradas asociadas
@@ -437,11 +445,13 @@ class Paradas(Base):
     ventana_horaria_inicio = Column(DateTime)
     ventana_horaria_fin = Column(DateTime)
     observaciones = Column(String)
+    pedido = relationship('Pedidos', back_populates='paradas')
 
 # Agrega una parada a un pedido
 def add_parada_pedido_db(parada, id_pedido):
     with get_db() as db:
-        parada_obj = Paradas(**parada.dict())
+        #parada_obj = Paradas(**parada.dict())
+        parada_obj = Paradas(**parada)
         parada_obj.id_pedido = id_pedido
         db.add(parada_obj)
         db.commit()
