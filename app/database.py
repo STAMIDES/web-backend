@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Boolean, Enum as SQLAEnum, or_ # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
@@ -192,29 +192,26 @@ class Clientes(Base):
 def add_cliente_db(cliente):
     try:
         with get_db() as db:
-            cliente_data = cliente.dict()
-            caracteristicas = cliente_data.pop('caracteristicas', [])
-
-            cliente_obj = Clientes(**cliente_data)
+            cliente_obj = cliente.dict()
+            caracteristicas = cliente_obj.pop('caracteristicas', [])
+            cliente_obj = Clientes(**cliente_obj)
             db.add(cliente_obj)
-            db.flush()  
-
+            db.flush()
+            caracteristicas_obj = []
             for caracteristica in caracteristicas:
-                cliente_caracteristica = ClientesCaracteristicas(
-                    id_cliente=cliente_obj.id,
-                    id_caracteristica=caracteristica
-                )
-                db.add(cliente_caracteristica)
+                caracteristica_obj = ClientesCaracteristicas(**caracteristica)
+                caracteristica_obj.id_cliente = cliente_obj.id
+                db.add(caracteristica_obj)
                 db.flush()
+                caracteristicas_obj.append(caracteristica_obj)
             db.commit() 
-            db.refresh(cliente_obj)  
+            cliente_obj.caracteristicas = caracteristicas_obj
             return cliente_obj
     except Exception as e:
         db.rollback()  
         raise e
     finally:
         db.close() 
-
 
 def get_cliente(id):
     with get_db() as db:
@@ -268,6 +265,23 @@ def get_clientes_by_caracteristica_db(caracteristica: str, limit: int = 100, off
     with get_db() as db:
         clientes = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).offset(offset).limit(limit).all()
         cantidad = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).count()
+        return clientes, cantidad
+
+# Obtiene los clientes tales que query está en el nombre, apellido, documento o tipo
+def get_clientes_by_query_db(query: str, limit: int = 100, offset: int = 0):
+    with get_db() as db:
+        clientes = db.query(Clientes).filter(or_(
+            Clientes.nombre.ilike(f'%{query}%'),
+            Clientes.apellido.ilike(f'%{query}%'),
+            cast(Clientes.documento, String).ilike(f'%{query}%'),
+            Clientes.tipo_persona.ilike(f'%{query}%'),
+        )).offset(offset).limit(limit).all()
+        cantidad = db.query(Clientes).filter(or_(
+            Clientes.nombre.ilike(f'%{query}%'),
+            Clientes.apellido.ilike(f'%{query}%'),
+            cast(Clientes.documento, String).ilike(f'%{query}%'),
+            Clientes.tipo_persona.ilike(f'%{query}%'),
+        )).count()
         return clientes, cantidad
 
 def update_cliente_db(documento, cliente):
@@ -358,7 +372,7 @@ class Pedidos(Base):
     prioridad = Column(Integer, nullable=False)
     acompañante = Column(Boolean, nullable=False)
     tipo = Column(SQLAEnum(m.TipoPedido), nullable=False)
-    fecha_ingresado = Column(DateTime, nullable=False)
+    fecha_ingresado = Column(DateTime, default=datetime.now())
     observaciones = Column(String)
     cliente = relationship('Clientes', back_populates='pedidos')
     paradas = relationship('Paradas', back_populates='pedido', cascade="all, delete-orphan")

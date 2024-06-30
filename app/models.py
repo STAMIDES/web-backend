@@ -77,7 +77,7 @@ class Pedidos(BaseModel):
     prioridad: int
     acompañante: bool
     tipo: TipoPedido
-    fecha_ingresado: datetime
+    fecha_ingresado: Optional[datetime] = None
     observaciones: Optional[str] = None
     paradas: List[Paradas]
 
