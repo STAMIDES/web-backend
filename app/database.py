@@ -1,9 +1,9 @@
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Boolean, Enum as SQLAEnum, or_ # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Time, Boolean, Enum as SQLAEnum, or_ # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
-from datetime import datetime
+from datetime import datetime, time
 import hashlib
 import random
 import models as m
@@ -199,13 +199,12 @@ def add_cliente_db(cliente):
             db.flush()
             caracteristicas_obj = []
             for caracteristica in caracteristicas:
-                caracteristica_obj = ClientesCaracteristicas(**caracteristica)
-                caracteristica_obj.id_cliente = cliente_obj.id
+                caracteristica_obj = ClientesCaracteristicas(id_cliente=cliente_obj.id, id_caracteristica=caracteristica)
                 db.add(caracteristica_obj)
                 db.flush()
                 caracteristicas_obj.append(caracteristica_obj)
             db.commit() 
-            cliente_obj.caracteristicas = caracteristicas_obj
+            #cliente_obj.caracteristicas = caracteristicas_obj
             return cliente_obj
     except Exception as e:
         db.rollback()  
@@ -373,6 +372,7 @@ class Pedidos(Base):
     acompañante = Column(Boolean, nullable=False)
     tipo = Column(SQLAEnum(m.TipoPedido), nullable=False)
     fecha_ingresado = Column(DateTime, default=datetime.now())
+    fecha_programado = Column(DateTime, nullable=False)
     observaciones = Column(String)
     cliente = relationship('Clientes', back_populates='pedidos')
     paradas = relationship('Paradas', back_populates='pedido', cascade="all, delete-orphan")
@@ -456,8 +456,8 @@ class Paradas(Base):
     direccion = Column(String, nullable=False)
     latitud = Column(Float)
     longitud = Column(Float)
-    ventana_horaria_inicio = Column(DateTime)
-    ventana_horaria_fin = Column(DateTime)
+    ventana_horaria_inicio = Column(Time)
+    ventana_horaria_fin = Column(Time)
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
 

@@ -1,7 +1,7 @@
 from typing import Optional, List
-from pydantic import BaseModel, Field # type: ignore
+from pydantic import BaseModel, Field, validator # type: ignore
 from shapely.geometry import LineString # type: ignore
-from datetime import datetime
+from datetime import datetime, time
 from enum import Enum
 
 class TipoUsuario(str, Enum):
@@ -60,6 +60,15 @@ class TipoPedido(str, Enum):
     solo_vuelta = "Solo vuelta"
     ida_y_vuelta = "Ida y vuelta"
 
+@validator('ventana_horaria_inicio', 'ventana_horaria_fin', pre=True)
+def validate_time(cls, v):
+    if v is not None:
+        try:
+            datetime.strptime(v, '%H:%M')
+        except ValueError:
+            raise ValueError('Time must be in format HH:MM')
+    return v
+
 class Paradas(BaseModel):
     id: Optional[int] = None
     id_pedido: Optional[int] = None
@@ -67,8 +76,8 @@ class Paradas(BaseModel):
     direccion: str
     latitud: Optional[float] = None
     longitud: Optional[float] = None
-    ventana_horaria_inicio: Optional[datetime] = None
-    ventana_horaria_fin: Optional[datetime] = None
+    ventana_horaria_inicio: Optional[time] = None
+    ventana_horaria_fin: Optional[time] = None
     observaciones: Optional[str] = None
 
 class Pedidos(BaseModel):
@@ -78,6 +87,7 @@ class Pedidos(BaseModel):
     acompañante: bool
     tipo: TipoPedido
     fecha_ingresado: Optional[datetime] = None
+    fecha_programado: datetime
     observaciones: Optional[str] = None
     paradas: List[Paradas]
 

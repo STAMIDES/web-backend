@@ -191,7 +191,7 @@ def get_clientes_caracteristica(caracteristica: str, limit: int = 10, offset: in
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router("/todos/{query}", dependencies=[Depends(JWTBearer())])
+@clientes_router.get("/todos/{query}", dependencies=[Depends(JWTBearer())])
 def get_clientes_query(query: str, limit: int = 10, offset: int = 0):
     try:
         clientes = db.get_clientes_by_query_db(query, limit, offset)
