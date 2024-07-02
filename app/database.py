@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Boolean, Enum as SQLAEnum # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Time, Boolean, Enum as SQLAEnum, or_ # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
@@ -131,7 +131,7 @@ def logout(refresh_token: str, email: str):
     with get_db() as db:
         user = get_user_by_email(email)
         if not user:
-            raise HTTPException(status_code=404, detail=f"User with email {email} not found")
+            raise HTTPException(status_code=401, detail=f"User with email {email} not found")
         
         db_token = get_refresh_token(refresh_token)
         if db_token:
@@ -248,29 +248,25 @@ class Clientes(Base):
 def add_cliente_db(cliente):
     try:
         with get_db() as db:
-            cliente_data = cliente.dict()
-            caracteristicas = cliente_data.pop('caracteristicas', [])
-
-            cliente_obj = Clientes(**cliente_data)
+            cliente_obj = cliente.dict()
+            caracteristicas = cliente_obj.pop('caracteristicas', [])
+            cliente_obj = Clientes(**cliente_obj)
             db.add(cliente_obj)
-            db.flush()  
-
+            db.flush()
+            caracteristicas_obj = []
             for caracteristica in caracteristicas:
-                cliente_caracteristica = ClientesCaracteristicas(
-                    id_cliente=cliente_obj.id,
-                    id_caracteristica=caracteristica
-                )
-                db.add(cliente_caracteristica)
+                caracteristica_obj = ClientesCaracteristicas(id_cliente=cliente_obj.id, id_caracteristica=caracteristica)
+                db.add(caracteristica_obj)
                 db.flush()
+                caracteristicas_obj.append(caracteristica_obj)
             db.commit() 
-            db.refresh(cliente_obj)  
+            #cliente_obj.caracteristicas = caracteristicas_obj
             return cliente_obj
     except Exception as e:
         db.rollback()  
         raise e
     finally:
         db.close() 
-
 
 def get_cliente(id):
     with get_db() as db:
@@ -324,6 +320,23 @@ def get_clientes_by_caracteristica_db(caracteristica: str, limit: int = 100, off
     with get_db() as db:
         clientes = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).offset(offset).limit(limit).all()
         cantidad = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).count()
+        return clientes, cantidad
+
+# Obtiene los clientes tales que query está en el nombre, apellido, documento o tipo
+def get_clientes_by_query_db(query: str, limit: int = 100, offset: int = 0):
+    with get_db() as db:
+        clientes = db.query(Clientes).filter(or_(
+            Clientes.nombre.ilike(f'%{query}%'),
+            Clientes.apellido.ilike(f'%{query}%'),
+            cast(Clientes.documento, String).ilike(f'%{query}%'),
+            Clientes.tipo_persona.ilike(f'%{query}%'),
+        )).offset(offset).limit(limit).all()
+        cantidad = db.query(Clientes).filter(or_(
+            Clientes.nombre.ilike(f'%{query}%'),
+            Clientes.apellido.ilike(f'%{query}%'),
+            cast(Clientes.documento, String).ilike(f'%{query}%'),
+            Clientes.tipo_persona.ilike(f'%{query}%'),
+        )).count()
         return clientes, cantidad
 
 def update_cliente_db(documento, cliente):
@@ -414,20 +427,29 @@ class Pedidos(Base):
     prioridad = Column(Integer, nullable=False)
     acompañante = Column(Boolean, nullable=False)
     tipo = Column(SQLAEnum(m.TipoPedido), nullable=False)
-    fecha_ingresado = Column(DateTime, nullable=False)
+    fecha_ingresado = Column(DateTime, default=datetime.now())
+    fecha_programado = Column(DateTime, nullable=False)
     observaciones = Column(String)
     cliente = relationship('Clientes', back_populates='pedidos')
+    paradas = relationship('Paradas', back_populates='pedido', cascade="all, delete-orphan")
 
 # Crea un pedido y sus paradas asociadas
 def add_pedido_db(pedido):
     with get_db() as db:
-        pedido_obj = Pedidos(**pedido.dict())
+        pedido_obj = pedido.dict()
+        paradas = pedido_obj.pop('paradas', [])
+        pedido_obj = Pedidos(**pedido_obj)
         db.add(pedido_obj)
+        db.flush()
+        paradas_obj = []
+        for parada in paradas:           
+            parada_obj = Paradas(**parada)
+            parada_obj.id_pedido = pedido_obj.id
+            db.add(parada_obj)
+            db.flush()
+            paradas_obj.append(parada_obj)
         db.commit()
-        db.refresh(pedido_obj)
-        for parada in pedido.paradas:
-            add_parada_pedido_db(parada, pedido_obj.id_pedido)
-            pedido_obj.paradas.append(parada)
+        pedido_obj.paradas = paradas_obj
         return pedido_obj
 
 # Obtinene un pedido y todas sus paradas asociadas
@@ -457,20 +479,12 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
         cantidad = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).count()
         return pedidos, cantidad
     
-# Obtiene los pedidos cuyas ventanas de origen y destino son en una fecha específica
+# Obtiene los pedidos tales que la fecha de sus paradas es en un determinado día
 def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-        pedidos = db.query(Pedidos ,  Clientes.nombre,  Clientes.apellido).\
-            join(Clientes, Pedidos.cliente_documento == Clientes.documento).\
-            filter(
-                func.date(Pedidos.ventana_origen_inicio) == fecha.date(), 
-                func.date(Pedidos.ventana_destino_inicio) == fecha.date()
-            ).offset(offset).limit(limit).all()
-        cantidad = db.query(Pedidos).filter(
-            func.date(Pedidos.ventana_origen_inicio) == fecha.date(),
-            func.date(Pedidos.ventana_destino_inicio) == fecha.date()
-        ).count()
+        pedidos = db.query(Pedidos).join(Paradas).filter(func.date(Paradas.ventana_horaria_inicio) == fecha).offset(offset).limit(limit).all()
+        cantidad = db.query(Pedidos).join(Paradas).filter(func.date(Paradas.ventana_horaria_inicio) == fecha).count()
         return pedidos, cantidad
 
 def update_pedido_db(id_pedido, pedido):
@@ -498,14 +512,16 @@ class Paradas(Base):
     direccion = Column(String, nullable=False)
     latitud = Column(Float)
     longitud = Column(Float)
-    ventana_horaria_inicio = Column(DateTime)
-    ventana_horaria_fin = Column(DateTime)
+    ventana_horaria_inicio = Column(Time)
+    ventana_horaria_fin = Column(Time)
     observaciones = Column(String)
+    pedido = relationship('Pedidos', back_populates='paradas')
 
 # Agrega una parada a un pedido
 def add_parada_pedido_db(parada, id_pedido):
     with get_db() as db:
-        parada_obj = Paradas(**parada.dict())
+        #parada_obj = Paradas(**parada.dict())
+        parada_obj = Paradas(**parada)
         parada_obj.id_pedido = id_pedido
         db.add(parada_obj)
         db.commit()
