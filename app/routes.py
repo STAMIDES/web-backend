@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
-from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, 
+from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, RefreshTokenRequest,
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario) # type: ignore
 import database as db
 import autenticacion.autenticacion as aut
@@ -36,7 +36,7 @@ def get_usuario(email: int):
 @usuarios_router.post("/invitar", dependencies=[Depends(JWTBearer())])
 def invite_usuario(usuarioInv: InvitacionUsuario):
     try:
-        if not db.user_exists(usuarioInv.email):
+        if not db.get_user_by_email(usuarioInv.email):
             # Enviar correo
             hash_link = db.generate_invitation(usuarioInv)
             if not hash_link:
@@ -107,18 +107,39 @@ def delete_usuario(email: int):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
+
 @usuarios_router.post("/login")
 def login(request: LoginRequest):
     try:
-        token = db.login(request.username, request.password)
-        return {"token": token}
+        access_token, refresh_token = db.login(request.username, request.password)
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
     except Exception as e:
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
+@usuarios_router.post("/refresh")
+def refresh_token(request: RefreshTokenRequest):
+        payload = aut.validate_token(request.refresh_token)
+        if payload["type"] != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        
+        user_email = payload.get("sub")
+        user = db.get_user_by_email(user_email)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if the refresh token is valid in the database
+        if not db.is_refresh_token_valid(user.id, request.refresh_token):
+            raise HTTPException(status_code=401, detail="Refresh token is not valid")
+        
+        # Generate new access token
+        new_access_token = aut.create_access_token(data={"sub": user_email})
+        
+        return {"access_token": new_access_token, "token_type": "bearer"}
+
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
-def logout(email: str):
+def logout(request: RefreshTokenRequest):
     try:
-        db.logout(email)
+        db.logout(request.refresh_token, request.email)
         return {"detail": "Usuario desconectado correctamente"}
     except Exception as e:
         log.error(traceback.format_exc())
