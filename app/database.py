@@ -287,11 +287,21 @@ def get_cliente_completo(id):
         return cliente
 
 # Obtiene los clientes desde offset hasta offset+limit
-def get_clientes_db(limit: int = 100, offset: int = 0):
+def get_clientes_db(limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
-        clientes = db.query(Clientes).filter(Clientes.activo==True).offset(offset).limit(limit).all()
+        search_func = Clientes.activo == True
+        if search:
+            search_func = search_func & (
+                or_(
+                    Clientes.nombre.ilike(f'%{search}%'),
+                    Clientes.apellido.ilike(f'%{search}%'),
+                    cast(Clientes.documento, String).ilike(f'%{search}%'),
+                    cast(Clientes.tipo, String).ilike(f'%{search}%')
+                )
+            )
+        clientes = db.query(Clientes).filter(search_func).offset(offset).limit(limit).all()
         log.info(f"Clientes: {clientes}")
-        cantidad = db.query(Clientes).count()
+        cantidad = db.query(Clientes).filter(search_func).count()
         return clientes, cantidad
 
 # Obtiene los clientes cuyo documento contiene el valor de la variable documento al principio
@@ -320,23 +330,6 @@ def get_clientes_by_caracteristica_db(caracteristica: str, limit: int = 100, off
     with get_db() as db:
         clientes = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).offset(offset).limit(limit).all()
         cantidad = db.query(Clientes).join(ClientesCaracteristicas).filter(ClientesCaracteristicas.caracteristica == caracteristica).count()
-        return clientes, cantidad
-
-# Obtiene los clientes tales que query está en el nombre, apellido, documento o tipo
-def get_clientes_by_query_db(query: str, limit: int = 100, offset: int = 0):
-    with get_db() as db:
-        clientes = db.query(Clientes).filter(or_(
-            Clientes.nombre.ilike(f'%{query}%'),
-            Clientes.apellido.ilike(f'%{query}%'),
-            cast(Clientes.documento, String).ilike(f'%{query}%'),
-            Clientes.tipo_persona.ilike(f'%{query}%'),
-        )).offset(offset).limit(limit).all()
-        cantidad = db.query(Clientes).filter(or_(
-            Clientes.nombre.ilike(f'%{query}%'),
-            Clientes.apellido.ilike(f'%{query}%'),
-            cast(Clientes.documento, String).ilike(f'%{query}%'),
-            Clientes.tipo_persona.ilike(f'%{query}%'),
-        )).count()
         return clientes, cantidad
 
 def update_cliente_db(documento, cliente):
