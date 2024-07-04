@@ -146,25 +146,6 @@ def logout(refresh_token: str, email: str):
         return {"message": f"User {email} successfully logged out."}
 
 
-def store_refresh_token(user_id: int, refresh_token: str):
-    with get_db() as db:
-        # You might want to create a new table for refresh tokens
-        new_token = RefreshToken(user_id=user_id, token=refresh_token)
-        db.add(new_token)
-        db.commit()
-
-def store_refresh_token(user_id: int, refresh_token: str, expires_delta: timedelta):
-    with get_db() as db:
-        db_token = RefreshToken(
-            token=refresh_token,
-            user_id=user_id,
-            expires_at=datetime.utcnow() + expires_delta
-        )
-        db.add(db_token)
-        db.commit()
-        db.refresh(db_token)
-        return db_token
-
 def get_refresh_token(token: str):
     with get_db() as db:
         return db.query(RefreshToken).filter(RefreshToken.token == token).first()
