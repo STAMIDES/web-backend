@@ -1,10 +1,11 @@
+from sqlite3 import Date
 from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Time, Boolean, Enum as SQLAEnum, or_ # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime, timedelta
-from fastapi import HTTPException
+from fastapi import HTTPException # type: ignore
 import hashlib
 import random
 import models as m
@@ -472,12 +473,12 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
         cantidad = db.query(Pedidos).filter(Pedidos.fecha_ingresado >= fecha_inicio, Pedidos.fecha_ingresado <= fecha_fin).count()
         return pedidos, cantidad
     
-# Obtiene los pedidos tales que la fecha de sus paradas es en un determinado día
+# Obtiene los pedidos tales que su fecha de programación sea igual a la fecha dada
 def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-        pedidos = db.query(Pedidos).join(Paradas).filter(func.date(Paradas.ventana_horaria_inicio) == fecha).offset(offset).limit(limit).all()
-        cantidad = db.query(Pedidos).join(Paradas).filter(func.date(Paradas.ventana_horaria_inicio) == fecha).count()
+        pedidos = db.query(Pedidos).filter(Pedidos.fecha_programado == fecha).offset(offset).limit(limit).all()
+        cantidad = db.query(Pedidos).filter(Pedidos.fecha_programado == fecha).count()
         return pedidos, cantidad
 
 def update_pedido_db(id_pedido, pedido):
