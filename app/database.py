@@ -435,8 +435,9 @@ def add_pedido_db(pedido):
 # Obtinene un pedido y todas sus paradas asociadas
 def get_pedido_db(id_pedido):
     with get_db() as db:
-        pedido = db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).first()
-        pedido.paradas = get_paradas_pedido_db(id_pedido)
+        pedido = db.query(Pedidos).filter(Pedidos.id == id_pedido).first()
+        if pedido:
+            pedido.paradas = get_paradas_pedido_db(id_pedido)
         return pedido
 
 # Obtiene los pedidos desde offset hasta offset+limit
@@ -482,13 +483,13 @@ def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
 
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
-        db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).update(pedido.dict())
+        db.query(Pedidos).filter(Pedidos.id == id_pedido).update(pedido.dict())
         db.commit()
         return pedido
 
 def delete_pedido_db(id_pedido):
     with get_db() as db:
-        db.query(Pedidos).filter(Pedidos.id_pedido == id_pedido).delete()
+        db.query(Pedidos).filter(Pedidos.id == id_pedido).delete()
         db.commit()
         return {"message": f"Pedido con ID {id_pedido} eliminado correctamente."}
     
@@ -527,7 +528,7 @@ def get_parada_db(id_parada, ):
 
 def get_paradas_pedido_db(id_pedido, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        paradas = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).offset(offset).limit(limit).all().order_by(Paradas.posicion_en_pedido)
+        paradas = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).order_by(Paradas.posicion_en_pedido).offset(offset).limit(limit).all()
         cantidad = db.query(Paradas).filter(Paradas.id_pedido == id_pedido).count()
         return paradas, cantidad
 
