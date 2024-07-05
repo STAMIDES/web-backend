@@ -435,10 +435,20 @@ def get_pedido_db(id_pedido):
         return pedido
 
 # Obtiene los pedidos desde offset hasta offset+limit
-def get_pedidos_db(limit: int = 100, offset: int = 0):
+def get_pedidos_db(limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
-        pedidos = db.query(Pedidos).offset(offset).limit(limit).all()
-        cantidad = db.query(Pedidos).count()
+        search_func = True
+        if search:
+            search_func = search_func & (
+                or_(
+                    cast(Pedidos.cliente_documento, String).ilike(f'%{search}%'),
+                    cast(Pedidos.prioridad, String).ilike(f'%{search}%'),
+                    cast(Pedidos.tipo, String).ilike(f'%{search}%'),
+                    Pedidos.fecha_programado.ilike(f'%{search}%')
+                )
+            )
+        pedidos = db.query(Pedidos).filter(search_func).offset(offset).limit(limit).all()
+        cantidad = db.query(Pedidos).filter(search_func).count()
         return pedidos, cantidad
 
 def get_pedidos_by_cliente_db(documento: int, limit: int = 100, offset: int = 0):

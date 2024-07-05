@@ -326,7 +326,7 @@ def get_pedido(id_pedido: int):
 @pedidos_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_pedidos(limit: int = 10, offset: int = 0, search: str = ''):
     try:
-        pedidos, cantidad = db.get_pedidos_db(limit, offset)
+        pedidos, cantidad = db.get_pedidos_db(limit, offset, search)
         return {"pedidos": pedidos, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
