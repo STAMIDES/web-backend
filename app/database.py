@@ -268,7 +268,9 @@ def get_cliente_completo(id):
         ).filter(Clientes.id == id).first()
 
         if cliente and cliente.pedidos:
-            cliente.pedidos = [pedido for pedido in cliente.pedidos if pedido.fecha_programado >= func.now()]
+            now = datetime.now() #FIXME VALIDAR FECHA ACTUAL TIMEZONE
+            log.info(f"Fecha actual: {now}")
+            cliente.pedidos = [pedido for pedido in cliente.pedidos if pedido.fecha_programado >= now]
         return cliente
 
 # Obtiene los clientes desde offset hasta offset+limit
