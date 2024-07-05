@@ -265,7 +265,10 @@ def get_cliente_completo(id):
         cliente = db.query(Clientes).options(
             joinedload(Clientes.caracteristicas),  
             joinedload(Clientes.pedidos).joinedload(Pedidos.paradas)
-        ).filter(Clientes.id == id, Pedidos.fecha_programado>=func.now()).first()
+        ).filter(Clientes.id == id).first()
+
+        if cliente and cliente.pedidos:
+            cliente.pedidos = [pedido for pedido in cliente.pedidos if pedido.fecha_programado >= func.now()]
         return cliente
 
 # Obtiene los clientes desde offset hasta offset+limit
