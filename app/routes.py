@@ -643,7 +643,8 @@ def get_planificacion(id_planificacion: int):
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
+
+@planificaciones_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
 def get_planificaciones_fecha(fecha, limit: int = 10, offset: int = 0, search: str = ''):
     try:
         planificaciones, cantidad = db.get_planificaciones_by_fecha_db(fecha, limit, offset)
