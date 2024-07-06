@@ -1,0 +1,220 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime, timedelta
+import random
+from faker import Faker
+import sys
+import os
+
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database import Base, Usuarios, RefreshToken, InvitacionUsuario, Clientes, Caracteristicas, Pedidos, Paradas, Vehiculos, Choferes, LugaresComunes, Planificaciones, Turnos, Rutas, RutasTurnos, Visitas
+
+import models as m
+
+# Initialize Faker
+fake = Faker()
+
+# Database connection
+DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create all tables
+Base.metadata.create_all(bind=engine)
+
+def create_sample_data():
+    db = SessionLocal()
+
+    # Create Users
+    users = []
+    for _ in range(10):
+        user = Usuarios(
+            email=fake.email(),
+            hashed_password=fake.sha256(),
+            nombre=fake.name(),
+            rol=random.choice(list(m.TipoUsuario))
+        )
+        db.add(user)
+        users.append(user)
+    
+    # Create Refresh Tokens
+    for user in users:
+        refresh_token = RefreshToken(
+            token=fake.uuid4(),
+            user_id=user.id,
+            expires_at=datetime.now() + timedelta(days=30)
+        )
+        db.add(refresh_token)
+
+    # Create Invitations
+    for _ in range(5):
+        invitation = InvitacionUsuario(
+            hash_link=fake.sha256(),
+            email=fake.email(),
+            nombre=fake.name(),
+            rol=random.choice(["admin", "user"])
+        )
+        db.add(invitation)
+
+    # Create Characteristics
+    characteristics = []
+    for _ in range(5):
+        characteristic = Caracteristicas(nombre=fake.word())
+        db.add(characteristic)
+        characteristics.append(characteristic)
+
+    # Create Clients
+    clients = []
+    for _ in range(20):
+        client = Clientes(
+            documento=fake.unique.random_number(digits=8),
+            nombre=fake.first_name(),
+            apellido=fake.last_name(),
+            direccion=fake.address(),
+            telefono=fake.phone_number(),
+            email=fake.email(),
+            tipo=random.choice(list(m.TipoCliente)),
+            observaciones=fake.text(max_nb_chars=200)
+        )
+        client.caracteristicas = random.sample(characteristics, k=random.randint(1, 3))
+        db.add(client)
+        clients.append(client)
+
+    # Create Orders
+    for client in clients:
+        for _ in range(random.randint(1, 10)):
+            order = Pedidos(
+                cliente_documento=client.documento,
+                prioridad=random.randint(1, 5),
+                acompañante=random.choice([True, False]),
+                tipo=random.choice(list(m.TipoPedido)),
+                fecha_programado=(datetime.now() + timedelta(days=random.randint(1, 30))).date(),
+                observaciones=fake.text(max_nb_chars=200)
+            )
+            db.add(order)
+            db.flush()
+            # Create Stops for each Order
+            for pos in range(random.randint(1, 3)):
+                stop = Paradas(
+                    id_pedido=order.id,
+                    posicion_en_pedido=pos + 1,
+                    direccion=fake.address(),
+                    latitud=float(fake.latitude()),
+                    longitud=float(fake.longitude()),
+                    ventana_horaria_inicio=fake.time_object(),
+                    ventana_horaria_fin=fake.time_object(),
+                    observaciones=fake.text(max_nb_chars=200)
+                )
+                db.add(stop)
+
+    # Create Vehicles
+    vehicles = []
+    for _ in range(10):
+        vehicle = Vehiculos(
+            matricula=fake.license_plate(),
+            descripcion=fake.text(max_nb_chars=100),
+            capacidad_convencional=random.randint(4, 8),
+            capacidad_silla_de_ruedas=random.randint(1, 2),
+            disponibilidad=random.choice([True, False]),
+            observaciones=fake.text(max_nb_chars=200)
+        )
+        db.add(vehicle)
+        vehicles.append(vehicle)
+
+    # Create Drivers
+    drivers = []
+    for _ in range(15):
+        driver = Choferes(
+            documento=fake.unique.random_number(digits=8),
+            nombre=fake.first_name(),
+            apellido=fake.last_name(),
+            telefono=fake.phone_number(),
+            observaciones=fake.text(max_nb_chars=200)
+        )
+        db.add(driver)
+        drivers.append(driver)
+
+    # Assign drivers to vehicles
+    for vehicle in vehicles:
+        vehicle.documento_chofer_habitual = random.choice(drivers).documento
+
+    # Create Common Places
+    for _ in range(10):
+        place = LugaresComunes(
+            nombre=fake.company(),
+            direccion=fake.address(),
+            latitud=float(fake.latitude()),
+            longitud=float(fake.longitude()),
+            observaciones=fake.text(max_nb_chars=200)
+        )
+        db.add(place)
+    db.commit()
+    db.close
+    return
+    # Create Planifications
+    planifications = []
+    for _ in range(5):
+        planification = Planificaciones(
+            nombre=fake.catch_phrase(),
+            fecha=fake.date_this_year(before_today=False, after_today=True),
+            fecha_creacion=fake.date_time_this_year(before_now=True, after_now=False),
+            observaciones=fake.text(max_nb_chars=200)
+        )
+        db.add(planification)
+        db.flush()
+        planifications.append(planification)
+
+        # Create Turns for each Planification
+        for _ in range(random.randint(1, 3)):
+            turn = Turnos(
+                id_planificacion=planification.id,
+                descripcion=fake.sentence(),
+                hora_inicio=fake.time(),
+                hora_fin=fake.time()
+            )
+            db.add(turn)
+        db.commit()
+        db.close
+        return
+        # Create Routes for each Planification
+        for _ in range(random.randint(1, 5)):
+            route = Rutas(
+                id_planificacion=planification.id,
+                id_vehiculo=random.choice(vehicles).id,
+                hora_inicio=fake.time(),
+                hora_fin=fake.time(),
+                geometria="LINESTRING(0 0, 1 1, 2 2)",  # Simplified geometry
+                observaciones=fake.text(max_nb_chars=200)
+            )
+            db.add(route)
+            db.flush()
+            # Create Route-Turn associations
+            route_turn = RutasTurnos(
+                id_ruta=route.id,
+                id_turno=turn.id,
+                id_chofer=random.choice(drivers).id
+            )
+            db.add(route_turn)
+
+            # Create Visits for each Route
+            for _ in range(random.randint(1, 5)):
+                visit = Visitas(
+                    id_ruta=route.id,
+                    id_item=random.randint(1, 100),  # Simplified, should be a valid id
+                    tipo_item=random.choice(list(m.TipoItemVisita)),
+                    estado=random.choice(list(m.EstadoVisita)),
+                    hora_llegada=fake.time_object(),
+                    hora_salida=fake.time_object(),
+                    observaciones=fake.text(max_nb_chars=200)
+                )
+                db.add(visit)
+    db.commit()
+
+    db.close()
+
+if __name__ == "__main__":
+    create_sample_data()
+    print("Sample data has been generated successfully.")
