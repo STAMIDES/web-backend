@@ -103,6 +103,7 @@ class Vehiculos(BaseModel):
     capacidad_silla_de_ruedas: int = Field(..., gt=0)
     disponibilidad: bool
     observaciones: Optional[str] = None
+    caracteristicas: Optional[List[int]] = None	
 
 class VehiculosCaracteristicas(BaseModel):
     id: Optional[int] = None

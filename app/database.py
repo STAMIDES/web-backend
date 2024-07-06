@@ -236,13 +236,13 @@ def add_cliente_db(cliente):
             db.add(cliente_obj)
             db.flush()
             caracteristicas_obj = []
-            for caracteristica in caracteristicas:
-                caracteristica_obj = ClientesCaracteristicas(id_cliente=cliente_obj.id, id_caracteristica=caracteristica)
-                db.add(caracteristica_obj)
-                db.flush()
-                caracteristicas_obj.append(caracteristica_obj)
-            db.commit() 
-            #cliente_obj.caracteristicas = caracteristicas_obj
+            if caracteristicas:
+                for caracteristica in caracteristicas:
+                    caracteristica_obj = ClientesCaracteristicas(id_cliente=cliente_obj.id, id_caracteristica=caracteristica)
+                    db.add(caracteristica_obj)
+                    db.flush()
+                    caracteristicas_obj.append(caracteristica_obj)
+            db.commit()
             return cliente_obj
     except Exception as e:
         db.rollback()  
@@ -563,6 +563,12 @@ class Vehiculos(Base):
     disponibilidad = Column(Boolean, nullable=False)
     observaciones = Column(String)
 
+    caracteristicas = relationship(
+        'Caracteristicas',
+        secondary='vehiculos_caracteristicas',
+        backref='vehiculos'
+    )
+
     __table_args__ = (
         CheckConstraint('capacidad_convencional > 0', name='capacidad_convencional_check'),
         CheckConstraint('capacidad_silla_de_ruedas > 0', name='capacidad_silla_de_ruedas_check'),
@@ -571,12 +577,19 @@ class Vehiculos(Base):
 # Agrega un vehículo y sus características asociadas
 def add_vehiculo_db(vehiculo):
     with get_db() as db:
-        vehiculo_obj = Vehiculos(**vehiculo.dict())
+        vehiculo_obj = vehiculo.dict()
+        caracteristicas = vehiculo_obj.pop('caracteristicas', [])
+        vehiculo_obj = Vehiculos(**vehiculo_obj)
         db.add(vehiculo_obj)
+        db.flush()
+        caracteristicas_obj = []
+        if caracteristicas:
+            for caracteristica in caracteristicas:
+                caracteristica_obj = VehiculosCaracteristicas(id_vehiculo=vehiculo_obj.id, id_caracteristica=caracteristica)
+                db.add(caracteristica_obj)
+                db.flush()
+                caracteristicas_obj.append(caracteristica_obj)
         db.commit()
-        db.refresh(vehiculo_obj)
-        for caracteristica in vehiculo.caracteristicas:
-            add_vehiculo_caracteristica({"id_vehiculo": vehiculo_obj.id, "id_caracteristica": caracteristica})
         return vehiculo_obj
     
 def get_vehiculo_db(id_vehiculo):
