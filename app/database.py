@@ -432,12 +432,12 @@ def add_pedido_db(pedido):
         pedido_obj.paradas = paradas_obj
         return pedido_obj
 
-# Obtinene un pedido y todas sus paradas asociadas
 def get_pedido_db(id_pedido):
     with get_db() as db:
-        pedido = db.query(Pedidos).filter(Pedidos.id == id_pedido).first()
-        if pedido:
-            pedido.paradas = get_paradas_pedido_db(id_pedido)
+        pedido = db.query(Pedidos).options(
+            joinedload(Pedidos.cliente),  
+            joinedload(Pedidos.paradas)
+        ).filter(Pedidos.id == id_pedido).first()
         return pedido
 
 # Obtiene los pedidos desde offset hasta offset+limit
