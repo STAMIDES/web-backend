@@ -87,9 +87,9 @@ def registrar_usuario(usuarioInv, nuevo_user):
         return usuario_obj
 
 # Obtiene los usuarios desde offset hasta offset+limit, devuelve también la cantidad total de usuarios   
-def get_usuarios(skip: int = 0, limit: int = 100):
+def get_usuarios(offset: int = 0, limit: int = 100):
     with get_db() as db:
-        usuarios = db.query(Usuarios).offset(skip).limit(limit).all()
+        usuarios = db.query(Usuarios).offset(offset).limit(limit).all()
         cantidad = db.query(Usuarios).count()
         return usuarios, cantidad
 
