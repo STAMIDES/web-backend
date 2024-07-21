@@ -14,9 +14,9 @@ log = logging.getLogger("routes")
 usuarios_router = APIRouter()
 
 @usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_usuarios(skip: int = 0, limit: int = 10, search: str = ''):
+def get_usuarios(offset: int = 0, limit: int = 10, search: str = ''):
     try:
-        usuarios, cantidad = db.get_usuarios(skip=skip, limit=limit)
+        usuarios, cantidad = db.get_usuarios(offset=offset, limit=limit)
         return {"usuarios": usuarios, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())

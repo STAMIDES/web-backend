@@ -87,9 +87,9 @@ def registrar_usuario(usuarioInv, nuevo_user):
         return usuario_obj
 
 # Obtiene los usuarios desde offset hasta offset+limit, devuelve también la cantidad total de usuarios   
-def get_usuarios(skip: int = 0, limit: int = 100):
+def get_usuarios(offset: int = 0, limit: int = 100):
     with get_db() as db:
-        usuarios = db.query(Usuarios).offset(skip).limit(limit).all()
+        usuarios = db.query(Usuarios).offset(offset).limit(limit).all()
         cantidad = db.query(Usuarios).count()
         return usuarios, cantidad
 
@@ -432,12 +432,12 @@ def add_pedido_db(pedido):
         pedido_obj.paradas = paradas_obj
         return pedido_obj
 
-# Obtinene un pedido y todas sus paradas asociadas
 def get_pedido_db(id_pedido):
     with get_db() as db:
-        pedido = db.query(Pedidos).filter(Pedidos.id == id_pedido).first()
-        if pedido:
-            pedido.paradas = get_paradas_pedido_db(id_pedido)
+        pedido = db.query(Pedidos).options(
+            joinedload(Pedidos.cliente),  
+            joinedload(Pedidos.paradas)
+        ).filter(Pedidos.id == id_pedido).first()
         return pedido
 
 # Obtiene los pedidos desde offset hasta offset+limit
@@ -560,7 +560,7 @@ class Vehiculos(Base):
     documento_chofer_habitual = Column(Integer, ForeignKey('choferes.documento'))
     capacidad_convencional = Column(Integer, nullable=False)
     capacidad_silla_de_ruedas = Column(Integer, nullable=False)
-    disponibilidad = Column(Boolean, nullable=False)
+    disponibilidad = Column(Boolean, default=True)
     observaciones = Column(String)
 
     caracteristicas = relationship(

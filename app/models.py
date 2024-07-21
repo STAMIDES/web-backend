@@ -101,7 +101,7 @@ class Vehiculos(BaseModel):
     documento_chofer_habitual: Optional[int] = None
     capacidad_convencional: int = Field(..., gt=0)
     capacidad_silla_de_ruedas: int = Field(..., gt=0)
-    disponibilidad: bool
+    disponibilidad: Optional[bool] = None
     observaciones: Optional[str] = None
     caracteristicas: Optional[List[int]] = None	
 
