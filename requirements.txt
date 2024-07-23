@@ -9,3 +9,4 @@ shapely
 pyjwt
 passlib[bcrypt]
 alembic
+faker
