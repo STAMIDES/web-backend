@@ -22,10 +22,10 @@ def get_usuarios(offset: int = 0, limit: int = 10, search: str = ''):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@usuarios_router.get("/{email}", dependencies=[Depends(JWTBearer())])
-def get_usuario(email: int):
+@usuarios_router.get("/{id_usuario}", dependencies=[Depends(JWTBearer())])
+def get_usuario(id_usuario: int):
     try:
-        usuario = db.get_usuario_db(email)
+        usuario = db.get_usuario_db(id_usuario)
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
         return {"usuario": usuario}
@@ -529,10 +529,10 @@ def delete_vehiculo_caracteristica(id_vehiculo: int):
 # region Choferes
 choferes_router = APIRouter()
 
-@choferes_router.get("/{documento}", dependencies=[Depends(JWTBearer())])
-def get_chofer(documento: int):
+@choferes_router.get("/{id}", dependencies=[Depends(JWTBearer())])
+def get_chofer(id: int):
     try:
-        chofer = db.get_chofer_db(documento)
+        chofer = db.get_chofer_db(id)
         if not chofer:
             raise HTTPException(status_code=404, detail="Chofer no encontrado.")
         return {"chofer": chofer}
