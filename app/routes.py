@@ -216,7 +216,7 @@ def get_clientes_caracteristica(caracteristica: str, limit: int = 10, offset: in
 def add_cliente(cliente: Clientes):
     try:
         if not db.get_cliente_by_doc(cliente.documento):
-            db.add_cliente_db(cliente)
+            cliente = db.add_cliente_db(cliente)
             return {"cliente": cliente}
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")
     except HTTPException as e:

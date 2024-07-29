@@ -113,7 +113,7 @@ def login(username: str, password: str):
     with get_db() as db:
         user = db.query(Usuarios).filter(Usuarios.email == username).first()
         if not user or not aut.verify_password(password, user.hashed_password):
-            return None
+            return None, None
         # Si el usuario y la contraseña son válidos, generamos un token JWT
         access_token = aut.create_access_token(data={"sub": user.email})
         refresh_token = aut.create_refresh_token(data={"sub": user.email})
@@ -211,10 +211,9 @@ class Clientes(Base):
     documento = Column(Integer, unique=True, index=True, nullable=False)
     nombre = Column(String, nullable=False)
     apellido = Column(String, nullable=False)
-    direccion = Column(String, nullable=False)
+    direccion = Column(String)
     telefono = Column(String)
     email = Column(String)
-    tipo = Column(SQLAEnum(m.TipoCliente), nullable=False)
     observaciones = Column(String)
     activo = Column(Boolean, default=True)
 
@@ -243,6 +242,7 @@ def add_cliente_db(cliente):
                     db.flush()
                     caracteristicas_obj.append(caracteristica_obj)
             db.commit()
+            db.refresh(cliente_obj)
             return cliente_obj
     except Exception as e:
         db.rollback()  
@@ -497,6 +497,12 @@ def delete_pedido_db(id_pedido):
 
 # region Paradas
 
+class TipoParada(Base):
+    __tablename__ = 'tipo_parada'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+
 class Paradas(Base):
     __tablename__ = 'paradas'
 
@@ -508,6 +514,7 @@ class Paradas(Base):
     longitud = Column(Float)
     ventana_horaria_inicio = Column(Time)
     ventana_horaria_fin = Column(Time)
+    tipo = Column(SQLAEnum(m.TipoParada), nullable=False)
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
 

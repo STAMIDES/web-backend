@@ -32,20 +32,15 @@ class RegistroUsuario(BaseModel):
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
     email: str
-class TipoCliente(str, Enum):
-    particular = "particular"
-    dispositivo = "dispositivo"
-    salud = "salud"
- 
+
 class Clientes(BaseModel):
     id: Optional[int] = None
     documento: int
     nombre: str
     apellido: str
-    direccion: str
+    direccion: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
-    tipo: TipoCliente
     observaciones: Optional[str] = None
     caracteristicas: Optional[List[int]] = None
 
@@ -72,6 +67,10 @@ def validate_time(cls, v):
             raise ValueError('Time must be in format HH:MM')
     return v
 
+class TipoParada(BaseModel):
+    id: Optional[int] = None
+    nombre: str
+
 class Paradas(BaseModel):
     id: Optional[int] = None
     id_pedido: Optional[int] = None
@@ -81,6 +80,7 @@ class Paradas(BaseModel):
     longitud: Optional[float] = None
     ventana_horaria_inicio: Optional[time] = None
     ventana_horaria_fin: Optional[time] = None
+    tipo: TipoParada
     observaciones: Optional[str] = None
 
 class Pedidos(BaseModel):
