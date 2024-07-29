@@ -90,12 +90,26 @@ def registrar_usuario(usuarioInv, nuevo_user):
 def get_usuarios(offset: int = 0, limit: int = 100):
     with get_db() as db:
         usuarios = db.query(Usuarios).offset(offset).limit(limit).all()
+        public_users_full = []
+        for user in usuarios:
+            public_users_full.append({
+                'id': user.id,
+                'email': user.email,
+                'nombre': user.nombre,
+                'rol': user.rol
+            })
         cantidad = db.query(Usuarios).count()
-        return usuarios, cantidad
+        return public_users_full, cantidad
 
-def get_usuario_db(email):
+def get_usuario_db(id_usuario):
     with get_db() as db:
-        return db.query(Usuarios).filter(Usuarios.email == email).first()
+        usuario= db.query(Usuarios).filter(Usuarios.id == id_usuario).first()
+        return {
+            'id': usuario.id,
+            'email': usuario.email,
+            'nombre': usuario.nombre,
+            'rol': usuario.rol
+        }
     
 def update_usuario_db(email, usuario):
     with get_db() as db:
@@ -601,7 +615,7 @@ def add_vehiculo_db(vehiculo):
     
 def get_vehiculo_db(id_vehiculo):
     with get_db() as db:
-        return db.query(Vehiculos).filter(Vehiculos.id_vehiculo == id_vehiculo).first()
+        return db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).first()
 
 def get_vehiculos_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
@@ -680,9 +694,9 @@ def add_chofer_db(chofer):
         db.refresh(chofer_obj)
         return chofer_obj
     
-def get_chofer_db(documento):
+def get_chofer_db(id):
     with get_db() as db:
-        return db.query(Choferes).filter(Choferes.documento == documento).first()
+        return db.query(Choferes).filter(Choferes.id == id).first()
     
 def get_choferes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
@@ -723,9 +737,9 @@ def add_lugar_comun_db(deposito):
         db.refresh(deposito_obj)
         return deposito_obj
     
-def get_lugar_comun_db(id_deposito):
+def get_lugar_comun_db(id):
     with get_db() as db:
-        return db.query(LugaresComunes).filter(LugaresComunes.id_deposito == id_deposito).first()
+        return db.query(LugaresComunes).filter(LugaresComunes.id == id).first()
 
 def get_lugares_comunes_db(limit: int = 100, offset: int = 0):
     with get_db() as db:
@@ -733,17 +747,17 @@ def get_lugares_comunes_db(limit: int = 100, offset: int = 0):
         cantidad = db.query(LugaresComunes).count()
         return lugares_comunes, cantidad
 
-def update_lugar_comun_db(id_deposito, deposito):
+def update_lugar_comun_db(id, deposito):
     with get_db() as db:
-        db.query(LugaresComunes).filter(LugaresComunes.id_deposito == id_deposito).update(deposito.dict())
+        db.query(LugaresComunes).filter(LugaresComunes.id == id).update(deposito.dict())
         db.commit()
         return deposito
     
-def delete_lugar_comun_db(id_deposito):
+def delete_lugar_comun_db(id):
     with get_db() as db:
-        db.query(LugaresComunes).filter(LugaresComunes.id_deposito == id_deposito).delete()
+        db.query(LugaresComunes).filter(LugaresComunes.id == id).delete()
         db.commit()
-        return {"message": f"Depósito con ID {id_deposito} eliminado correctamente."}
+        return {"message": f"Depósito con ID {id} eliminado correctamente."}
 
 # endregion
 
