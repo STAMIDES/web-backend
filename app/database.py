@@ -423,6 +423,7 @@ class Pedidos(Base):
     tipo = Column(SQLAEnum(m.TipoPedido), nullable=False)
     fecha_ingresado = Column(DateTime, default=datetime.now())
     fecha_programado = Column(DateTime, nullable=False)
+    estado = Column(SQLAEnum(m.EstadoPedido), default=m.EstadoPedido.pendiente)
     observaciones = Column(String)
     cliente = relationship('Clientes', back_populates='pedidos')
     paradas = relationship('Paradas', back_populates='pedido', cascade="all, delete-orphan")
@@ -509,14 +510,46 @@ def delete_pedido_db(id_pedido):
     
 # endregion
 
-# region Paradas
-
-class TipoParada(Base):
+# region TipoParada
+class TiposParadas(Base):
     __tablename__ = 'tipo_parada'
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String, nullable=False)
 
+def get_tipo_parada_db(id_tipo_parada):
+    with get_db() as db:
+        return db.query(TiposParadas).filter(TiposParadas.id == id_tipo_parada).first()
+
+def get_tipos_paradas_db(limit: int = 100, offset: int = 0):
+    with get_db() as db:
+        tipos_parada = db.query(TiposParadas).offset(offset).limit(limit).all()
+        cantidad = db.query(TiposParadas).count()
+        return tipos_parada, cantidad
+    
+def add_tipo_parada_db(tipo_parada):
+    with get_db() as db:
+        tipo_parada_obj = TiposParadas(**tipo_parada.dict())
+        db.add(tipo_parada_obj)
+        db.commit()
+        db.refresh(tipo_parada_obj)
+        return tipo_parada_obj
+
+def update_tipo_parada_db(id_tipo_parada, tipo_parada):
+    with get_db() as db:
+        db.query(TiposParadas).filter(TiposParadas.id == id_tipo_parada).update(tipo_parada.dict())
+        db.commit()
+        return tipo_parada
+    
+def delete_tipo_parada_db(id_tipo_parada):
+    with get_db() as db:
+        db.query(TiposParadas).filter(TiposParadas.id == id_tipo_parada).delete()
+        db.commit()
+        return {"message": f"Tipo de parada con ID {id_tipo_parada} eliminado correctamente."}
+    
+# endregion
+
+# region Paradas
 class Paradas(Base):
     __tablename__ = 'paradas'
 
@@ -528,7 +561,7 @@ class Paradas(Base):
     longitud = Column(Float)
     ventana_horaria_inicio = Column(Time)
     ventana_horaria_fin = Column(Time)
-    tipo = Column(SQLAEnum(m.TipoParada), nullable=False)
+    tipo = Column(SQLAEnum(m.TiposParadas), nullable=False)
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
 
@@ -582,6 +615,7 @@ class Vehiculos(Base):
     capacidad_convencional = Column(Integer, nullable=False)
     capacidad_silla_de_ruedas = Column(Integer, nullable=False)
     disponibilidad = Column(Boolean, default=True)
+    activo = Column(Boolean, default=True)
     observaciones = Column(String)
 
     caracteristicas = relationship(
@@ -626,7 +660,13 @@ def get_vehiculos_db(limit: int = 100, offset: int = 0):
 def get_vehiculo_by_matricula_db(matricula):
     with get_db() as db:
         return db.query(Vehiculos).filter(Vehiculos.matricula == matricula).first()
-    
+
+def get_vehiculos_by_activo_db(activo: bool, limit: int = 100, offset: int = 0):
+    with get_db() as db:
+        vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == activo).offset(offset).limit(limit).all()
+        cantidad = db.query(Vehiculos).filter(Vehiculos.activo == activo).count()
+        return vehiculos, cantidad
+
 def update_vehiculo_db(id_vehiculo, vehiculo):
     with get_db() as db:
         db.query(Vehiculos).filter(Vehiculos.id_vehiculo == id_vehiculo).update(vehiculo.dict())
@@ -684,6 +724,7 @@ class Choferes(Base):
     nombre = Column(String, nullable=False)
     apellido = Column(String, nullable=False)
     telefono = Column(String)
+    activo = Column(Boolean, default=True)
     observaciones = Column(String)
 
 def add_chofer_db(chofer):
@@ -703,6 +744,11 @@ def get_choferes_db(limit: int = 100, offset: int = 0):
         choferes = db.query(Choferes).offset(offset).limit(limit).all()
         cantidad = db.query(Choferes).count()
         return choferes, cantidad
+
+def get_choferes_by_activo_db(activo, limit: int = 100, offset: int = 0):
+    with get_db() as db:
+        choferes = db.query(Choferes).filter(Choferes.activo == activo).all()
+        return choferes
 
 def update_chofer_db(documento, chofer):
     with get_db() as db:
@@ -727,6 +773,7 @@ class LugaresComunes(Base):
     direccion = Column(String, nullable=False)
     latitud = Column(Float)
     longitud = Column(Float)
+    activo = Column(Boolean, default=True)
     observaciones = Column(String)
 
 def add_lugar_comun_db(deposito):
@@ -746,6 +793,11 @@ def get_lugares_comunes_db(limit: int = 100, offset: int = 0):
         lugares_comunes = db.query(LugaresComunes).offset(offset).limit(limit).all()
         cantidad = db.query(LugaresComunes).count()
         return lugares_comunes, cantidad
+
+def get_lugares_comunes_by_activo_db(activo, limit: int = 100, offset: int = 0):
+    with get_db() as db:
+        lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == activo).all()
+        return lugares_comunes
 
 def update_lugar_comun_db(id, deposito):
     with get_db() as db:

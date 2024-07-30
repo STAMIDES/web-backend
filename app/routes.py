@@ -379,6 +379,52 @@ def delete_pedido(id_pedido: int):
 
 # endregion
 
+# region TiposParadas
+tipos_paradas_router = APIRouter()
+
+@tipos_paradas_router.get("/{id_tipo_parada}", dependencies=[Depends(JWTBearer())])
+def get_tipo_parada(id_tipo_parada: int):
+    try:
+        tipo_parada = db.get_tipo_parada_db(id_tipo_parada)
+        if not tipo_parada:
+            raise HTTPException(status_code=404, detail="Tipo de parada no encontrado.")
+        return {"tipo_parada": tipo_parada}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@tipos_paradas_router.get("/", dependencies=[Depends(JWTBearer())])
+def get_tipos_paradas(limit: int = 10, offset: int = 0):
+    try:
+        return db.get_tipos_paradas_db(limit, offset)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@tipos_paradas_router.post("/", dependencies=[Depends(JWTBearer())])
+def add_tipo_parada(tipo_parada: str):
+    try:
+        db.add_tipo_parada_db(tipo_parada)
+        return {"tipo_parada": tipo_parada}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@tipos_paradas_router.put("/{id_tipo_parada}", dependencies=[Depends(JWTBearer())])
+def update_tipo_parada(id_tipo_parada: int, tipo_parada: str):
+    try:
+        db.update_tipo_parada_db(id_tipo_parada, tipo_parada)
+        return {"tipo_parada": tipo_parada}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+@tipos_paradas_router.delete("/{id_tipo_parada}", dependencies=[Depends(JWTBearer())])
+def delete_tipo_parada(id_tipo_parada: int):
+    try:
+        db.delete_tipo_parada_db(id_tipo_parada)
+        return {"message": f"Tipo de parada con ID {id_tipo_parada} eliminado correctamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+# endregion
+
 # region Paradas
 paradas_router = APIRouter()
 
@@ -449,6 +495,15 @@ def get_vehiculos(limit: int = 10, offset: int = 0, search: str = ''):
 def get_vehiculo_matricula(matricula: str, limit: int = 10, offset: int = 0):
     try:
         vehiculos = db.get_vehiculo_by_matricula_db(matricula)
+        return {"vehiculos": vehiculos}
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@vehiculos_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
+def get_vehiculos_activos(activo: bool, limit: int = 10, offset: int = 0):
+    try:
+        vehiculos = db.get_vehiculos_by_activo_db(activo, limit, offset)
         return {"vehiculos": vehiculos}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -549,6 +604,15 @@ def get_choferes(limit: int = 10, offset: int = 0, search: str = ''):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
+@choferes_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
+def get_choferes_activos(activo: bool, limit: int = 10, offset: int = 0):
+    try:
+        choferes = db.get_choferes_by_activo_db(activo, limit, offset)
+        return {"choferes": choferes}
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
 @choferes_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_chofer(chofer: Choferes):
     try:
@@ -597,6 +661,15 @@ def get_lugares_comunes(limit: int = 10, offset: int = 0, search: str = ''):
     try:
         lugares, cantidad = db.get_lugares_comunes_db(limit, offset)
         return {"lugares": lugares, "cantidad": cantidad}
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@lugares_comunes_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
+def get_lugares_comunes_activos(activo: bool, limit: int = 10, offset: int = 0):
+    try:
+        lugares = db.get_lugares_comunes_by_activo_db(activo, limit, offset)
+        return {"lugares": lugares}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")

@@ -67,7 +67,7 @@ def validate_time(cls, v):
             raise ValueError('Time must be in format HH:MM')
     return v
 
-class TipoParada(BaseModel):
+class TiposParadas(BaseModel):
     id: Optional[int] = None
     nombre: str
 
@@ -80,8 +80,13 @@ class Paradas(BaseModel):
     longitud: Optional[float] = None
     ventana_horaria_inicio: Optional[time] = None
     ventana_horaria_fin: Optional[time] = None
-    tipo: TipoParada
+    tipo: TiposParadas
     observaciones: Optional[str] = None
+
+class EstadoPedido(str, Enum):
+    pendiente = "Pendiente"
+    asignado = "Asignado"
+    rechazado = "Rechazado"
 
 class Pedidos(BaseModel):
     id: Optional[int] = None
@@ -91,6 +96,7 @@ class Pedidos(BaseModel):
     tipo: TipoPedido
     fecha_ingresado: Optional[datetime] = None
     fecha_programado: datetime
+    estado: EstadoPedido
     observaciones: Optional[str] = None
     paradas: List[Paradas]
 
@@ -102,6 +108,7 @@ class Vehiculos(BaseModel):
     capacidad_convencional: int = Field(..., gt=0)
     capacidad_silla_de_ruedas: int = Field(..., gt=0)
     disponibilidad: Optional[bool] = None
+    activo: bool
     observaciones: Optional[str] = None
     caracteristicas: Optional[List[int]] = None	
 
@@ -116,6 +123,7 @@ class Choferes(BaseModel):
     nombre: str
     apellido: str
     telefono: Optional[str] = None
+    activo: bool
     observaciones: Optional[str] = None
 
 class LugaresComunes(BaseModel):
@@ -124,6 +132,7 @@ class LugaresComunes(BaseModel):
     direccion: str
     latitud: Optional[float] = None
     longitud: Optional[float] = None
+    activo: bool
     observaciones: Optional[str] = None
 
 class Planificaciones(BaseModel):
