@@ -96,7 +96,7 @@ class Pedidos(BaseModel):
     tipo: TipoPedido
     fecha_ingresado: Optional[datetime] = None
     fecha_programado: datetime
-    estado: EstadoPedido
+    estado: EstadoPedido = EstadoPedido.pendiente
     observaciones: Optional[str] = None
     paradas: List[Paradas]
 
