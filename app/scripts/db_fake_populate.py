@@ -9,7 +9,7 @@ import os
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import Base, Usuarios, RefreshToken, InvitacionUsuario, Clientes, Caracteristicas, Pedidos, Paradas, Vehiculos, Choferes, LugaresComunes, Planificaciones, Turnos, Rutas, RutasTurnos, Visitas
+from database import Base, Usuarios, RefreshToken, InvitacionUsuario, Clientes, Caracteristicas, Pedidos, Paradas, TiposParadas,Vehiculos, Choferes, LugaresComunes, Planificaciones, Turnos, Rutas, RutasTurnos, Visitas
 
 import models as m
 
@@ -24,6 +24,19 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
+
+def random_lat_lng_montevideo():
+    # Define the bounding box for Montevideo, Uruguay
+    min_lat = -34.927
+    max_lat = -34.797
+    min_lng = -56.256
+    max_lng = -56.053
+    
+    # Generate random latitude and longitude within the bounding box
+    lat = random.uniform(min_lat, max_lat)
+    lng = random.uniform(min_lng, max_lng)
+    
+    return lat, lng
 
 def create_sample_data():
     db = SessionLocal()
@@ -76,7 +89,6 @@ def create_sample_data():
             direccion=fake.address(),
             telefono=fake.phone_number(),
             email=fake.email(),
-            tipo=random.choice(list(m.TipoCliente)),
             observaciones=fake.text(max_nb_chars=200)
         )
         client.caracteristicas = random.sample(characteristics, k=random.randint(1, 3))
@@ -91,21 +103,30 @@ def create_sample_data():
                 prioridad=random.randint(1, 5),
                 acompañante=random.choice([True, False]),
                 tipo=random.choice(list(m.TipoPedido)),
-                fecha_programado=(datetime.now() + timedelta(days=random.randint(1, 30))).date(),
+                fecha_programado=(datetime.now() + timedelta(days=random.randint(0, 30))).date(),
                 observaciones=fake.text(max_nb_chars=200)
             )
             db.add(order)
             db.flush()
             # Create Stops for each Order
             for pos in range(random.randint(1, 3)):
+                tipoP = TiposParadas(
+                    nombre=random.choice(['Hospital', 'Particular', 'Mides']),    
+                )
+                db.add(tipoP)
+                db.flush()
+                ventana_init = fake.date_time_this_year()
+                ventana_fin = (ventana_init + timedelta(hours=random.randint(1, 3))).time() 
+                latitude, longitude = random_lat_lng_montevideo()
                 stop = Paradas(
+                    tipo = tipoP.id,
                     id_pedido=order.id,
                     posicion_en_pedido=pos + 1,
                     direccion=fake.address(),
-                    latitud=float(fake.latitude()),
-                    longitud=float(fake.longitude()),
-                    ventana_horaria_inicio=fake.time_object(),
-                    ventana_horaria_fin=fake.time_object(),
+                    latitud=latitude,
+                    longitud=longitude,
+                    ventana_horaria_inicio=ventana_init.time(),
+                    ventana_horaria_fin=ventana_fin,
                     observaciones=fake.text(max_nb_chars=200)
                 )
                 db.add(stop)
