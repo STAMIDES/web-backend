@@ -122,10 +122,13 @@ def create_sample_data():
             )
             db.add(order)
             db.flush()
-            # Create Stops for each Order
+            ventana_init = fake.date_time_this_year()
+            threshold_time = datetime.strptime('19:00:00', '%H:%M:%S').time()
+
+            if ventana_init.time() > threshold_time:
+                ventana_init = ventana_init.replace(hour=18, minute=59, second=59)
             for pos in range(random.randint(1, 5)):
-                ventana_init = fake.date_time_this_year()
-                ventana_fin = (ventana_init + timedelta(hours=random.randint(1, 3))).time() 
+                ventana_fin = (ventana_init + timedelta(hours=1))
                 latitude, longitude = random_lat_lng_montevideo()
                 stop = Paradas(
                     tipo = random.choice(tipos).id,
@@ -135,9 +138,11 @@ def create_sample_data():
                     latitud=latitude,
                     longitud=longitude,
                     ventana_horaria_inicio=ventana_init.time(),
-                    ventana_horaria_fin=ventana_fin,
+                    ventana_horaria_fin=ventana_fin.time(),
                     observaciones=fake.text(max_nb_chars=200)
                 )
+                ventana_init = ventana_fin
+
                 db.add(stop)
 
     # Create Vehicles
