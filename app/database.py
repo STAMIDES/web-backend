@@ -451,7 +451,6 @@ def get_pedido_db(id_pedido):
     with get_db() as db:
         pedido = db.query(Pedidos).options(
             joinedload(Pedidos.cliente),
-            joinedload(ClientesCaracteristicas.caracteristicas),  
             joinedload(Pedidos.paradas)
         ).filter(Pedidos.id == id_pedido).first()
         return pedido
@@ -490,9 +489,8 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
 def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-        #  tambien se deben devolver las carcterisicas del cliente
         pedidos = db.query(Pedidos).options(
-            joinedload(Pedidos.cliente),  
+            joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),
             joinedload(Pedidos.paradas)
         ).filter(Pedidos.fecha_programado == fecha).offset(offset).limit(limit).all()
         cantidad = db.query(Pedidos).filter(Pedidos.fecha_programado == fecha).count()
