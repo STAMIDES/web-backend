@@ -95,6 +95,20 @@ def create_sample_data():
         db.add(client)
         clients.append(client)
 
+    tipoH = TiposParadas(
+        nombre='Hospital',    
+    )
+    db.add(tipoH), #'Particular', 'Mides'])
+    tipoP = TiposParadas(
+        nombre='Particular',
+    )
+    db.add(tipoP)
+    tipoM = TiposParadas(
+        nombre='Mides',
+    )
+    db.add(tipoM)
+    tipos = [tipoH, tipoP, tipoM]
+    db.flush()
     # Create Orders
     for client in clients:
         for _ in range(random.randint(1, 10)):
@@ -109,17 +123,12 @@ def create_sample_data():
             db.add(order)
             db.flush()
             # Create Stops for each Order
-            for pos in range(random.randint(1, 3)):
-                tipoP = TiposParadas(
-                    nombre=random.choice(['Hospital', 'Particular', 'Mides']),    
-                )
-                db.add(tipoP)
-                db.flush()
+            for pos in range(random.randint(1, 5)):
                 ventana_init = fake.date_time_this_year()
                 ventana_fin = (ventana_init + timedelta(hours=random.randint(1, 3))).time() 
                 latitude, longitude = random_lat_lng_montevideo()
                 stop = Paradas(
-                    tipo = tipoP.id,
+                    tipo = random.choice(tipos).id,
                     id_pedido=order.id,
                     posicion_en_pedido=pos + 1,
                     direccion=fake.address(),
