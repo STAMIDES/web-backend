@@ -395,9 +395,10 @@ def get_tipo_parada(id_tipo_parada: int):
 @tipos_paradas_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_tipos_paradas(limit: int = 10, offset: int = 0):
     try:
-        return db.get_tipos_paradas_db(limit, offset)
+        tipos_paradas, cantidad = db.get_tipos_paradas_db(limit, offset)
+        return tipos_paradas
     except Exception as e:
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+        raise HTTPException(status_code=500, detail=str(e))
     
 @tipos_paradas_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_tipo_parada(tipo_parada: str):

@@ -50,6 +50,7 @@ app.include_router(r.turnos_router, prefix="/turnos")
 app.include_router(r.rutas_router, prefix="/rutas")
 app.include_router(r.visitas_router, prefix="/visitas")
 app.include_router(r.usuarios_router, prefix="/usuarios")
+app.include_router(r.tipos_paradas_router, prefix="/tipos_paradas")
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
