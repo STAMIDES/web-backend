@@ -95,6 +95,20 @@ def create_sample_data():
         db.add(client)
         clients.append(client)
 
+    tipoH = TiposParadas(
+        nombre='Hospital',    
+    )
+    db.add(tipoH), #'Particular', 'Mides'])
+    tipoP = TiposParadas(
+        nombre='Particular',
+    )
+    db.add(tipoP)
+    tipoM = TiposParadas(
+        nombre='Mides',
+    )
+    db.add(tipoM)
+    tipos = [tipoH, tipoP, tipoM]
+    db.flush()
     # Create Orders
     for client in clients:
         for _ in range(random.randint(1, 10)):
@@ -108,27 +122,27 @@ def create_sample_data():
             )
             db.add(order)
             db.flush()
-            # Create Stops for each Order
-            for pos in range(random.randint(1, 3)):
-                tipoP = TiposParadas(
-                    nombre=random.choice(['Hospital', 'Particular', 'Mides']),    
-                )
-                db.add(tipoP)
-                db.flush()
-                ventana_init = fake.date_time_this_year()
-                ventana_fin = (ventana_init + timedelta(hours=random.randint(1, 3))).time() 
+            ventana_init = fake.date_time_this_year()
+            threshold_time = datetime.strptime('19:00:00', '%H:%M:%S').time()
+
+            if ventana_init.time() > threshold_time:
+                ventana_init = ventana_init.replace(hour=18, minute=59, second=59)
+            for pos in range(random.randint(1, 5)):
+                ventana_fin = (ventana_init + timedelta(hours=1))
                 latitude, longitude = random_lat_lng_montevideo()
                 stop = Paradas(
-                    tipo = tipoP.id,
+                    tipo = random.choice(tipos).id,
                     id_pedido=order.id,
                     posicion_en_pedido=pos + 1,
                     direccion=fake.address(),
                     latitud=latitude,
                     longitud=longitude,
                     ventana_horaria_inicio=ventana_init.time(),
-                    ventana_horaria_fin=ventana_fin,
+                    ventana_horaria_fin=ventana_fin.time(),
                     observaciones=fake.text(max_nb_chars=200)
                 )
+                ventana_init = ventana_fin
+
                 db.add(stop)
 
     # Create Vehicles
