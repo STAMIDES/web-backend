@@ -80,7 +80,7 @@ class Paradas(BaseModel):
     longitud: Optional[float] = None
     ventana_horaria_inicio: Optional[time] = None
     ventana_horaria_fin: Optional[time] = None
-    tipo: TiposParadas
+    tipo: Optional[int] = None
     observaciones: Optional[str] = None
 
 class EstadoPedido(str, Enum):

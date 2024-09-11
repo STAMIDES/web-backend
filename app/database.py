@@ -561,7 +561,7 @@ class Paradas(Base):
     longitud = Column(Float)
     ventana_horaria_inicio = Column(Time)
     ventana_horaria_fin = Column(Time)
-    tipo = Column(Integer, ForeignKey('tipo_parada.id'), nullable=False)
+    tipo = Column(Integer, ForeignKey('tipo_parada.id'))
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
 
