@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
 from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, RefreshTokenRequest,
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario) # type: ignore
@@ -132,7 +133,7 @@ def refresh_token(request: RefreshTokenRequest):
             raise HTTPException(status_code=401, detail="Refresh token is not valid")
         
         # Generate new access token
-        new_access_token = aut.create_access_token(data={"sub": user_email})
+        new_access_token = aut.create_access_token(data={"sub": user_email, "user_id": user.id})
         
         return {"access_token": new_access_token, "token_type": "bearer"}
 
@@ -719,7 +720,7 @@ def get_planificacion(id_planificacion: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @planificaciones_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
-def get_planificaciones_fecha(fecha, limit: int = 10, offset: int = 0, search: str = ''):
+def get_planificaciones_fecha(fecha:str, limit: int = 10, offset: int = 0, search: str = ''):
     try:
         planificaciones, cantidad = db.get_planificaciones_by_fecha_db(fecha, limit, offset)
         return {"planificaciones": planificaciones, "cantidad": cantidad}
@@ -727,10 +728,16 @@ def get_planificaciones_fecha(fecha, limit: int = 10, offset: int = 0, search: s
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@planificaciones_router.post("/", dependencies=[Depends(JWTBearer())])
-def add_planificacion(planificacion: Planificaciones):
+@planificaciones_router.post("/")
+def add_planificacion(
+            planificacion: Planificaciones, 
+            turnos: List[Turnos], 
+            rutas: List[Rutas], 
+            token_payload: dict = Depends(JWTBearer())  # Move token_payload inside the function parameters
+        ):
     try:
-        db.crear_planificacion(planificacion)
+        user_id: int = token_payload.get("user_id")
+        db.crear_planificacion(user_id, planificacion, turnos, rutas)
         return {"planificacion": planificacion}
     except Exception as e:
         log.error(traceback.format_exc())

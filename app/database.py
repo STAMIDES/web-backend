@@ -5,6 +5,9 @@ from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime, timedelta
+from shapely.geometry import LineString
+from geoalchemy2 import WKTElement
+
 from fastapi import HTTPException # type: ignore
 import hashlib
 import random
@@ -129,8 +132,8 @@ def login(username: str, password: str):
         if not user or not aut.verify_password(password, user.hashed_password):
             return None, None
         # Si el usuario y la contraseña son válidos, generamos un token JWT
-        access_token = aut.create_access_token(data={"sub": user.email})
-        refresh_token = aut.create_refresh_token(data={"sub": user.email})
+        access_token = aut.create_access_token(data={"sub": user.email, "user_id": user.id})
+        refresh_token = aut.create_refresh_token(data={"sub": user.email, "user_id": user.id})
         user.token = access_token
         new_ref_token = RefreshToken(user_id=user.id, token=refresh_token, expires_at=datetime.utcnow() + timedelta(days=aut.REFRESH_TOKEN_EXPIRE_DAYS))
         db.add(new_ref_token)
@@ -818,24 +821,30 @@ class Planificaciones(Base):
     __tablename__ = 'planificaciones'
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String, nullable=False)
+    usuario_id = Column(Integer, ForeignKey('usuarios.id'))
     fecha = Column(DateTime, nullable=False)
-    fecha_creacion = Column(DateTime, nullable=False)
+    fecha_creacion = Column(DateTime, nullable=False, default=datetime.now())
     observaciones = Column(String)
 
+    turnos = relationship('Turnos', back_populates='planificacion')
+    rutas = relationship('Rutas', back_populates='planificacion')
+
 # Crea un planificación y dos turnos asociados
-def crear_planificacion(planificacion):
+def crear_planificacion(user_id, planificacion, turnos, rutas):
     with get_db() as db:
+        log.info(planificacion)
+        log.info(user_id)
+        planificacion.usuario_id = user_id
         planificacion_obj = add_planificacion_db(planificacion)
 
         # Crea dos turnos por defecto asociados a la planificación
-        planificacion_obj.turnos = []
-        turno1 = Turnos(id_planificacion=planificacion_obj.id_planificacion, descripcion="Turno mañana", hora_inicio="06:00", hora_fin="14:00")
-        turno1 = add_turno_db(turno1)
-        planificacion_obj.turnos.append(turno1)
-        turno2 = Turnos(id_planificacion=planificacion_obj.id_planificacion, descripcion="Turno tarde", hora_inicio="13:00", hora_fin="21:00")
-        turno2 = add_turno_db(turno2)
-        planificacion_obj.turnos.append(turno2)
+        for t in turnos:
+            t.id_planificacion = planificacion_obj.id
+            #turno = Turnos(id_planificacion=planificacion_obj.id, **t)
+            turno = add_turno_db(t)
+        for r in rutas:
+            r.id_planificacion = planificacion_obj.id
+            rutas_obj = add_ruta_db(r)
 
         # Asocia a la planificación los vehículos, choferes y lugares comunes disponibles
         planificacion_obj.vehiculos = get_vehiculos_db()
@@ -843,7 +852,7 @@ def crear_planificacion(planificacion):
         planificacion_obj.lugares_comunes = get_lugares_comunes_db()
 
         # Asocia a la planificación los pedidos para su fecha
-        planificacion_obj.pedios = get_pedidos_by_fecha_db(planificacion_obj.fecha)
+        planificacion_obj.pedios = get_pedidos_by_fecha_db(datetime.strftime(planificacion_obj.fecha, '%Y-%m-%d'))
 
         return planificacion_obj
 
@@ -862,7 +871,8 @@ def get_planificacion_db(id_planificacion: int):
         planificacion = db.query(Planificaciones).options(
             joinedload(Planificaciones.turnos),
             joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.vehiculo)
+                .joinedload(Rutas.vehiculo),
+            joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.rutas_turnos)
                 .joinedload(RutasTurnos.chofer),
             joinedload(Planificaciones.rutas)
@@ -881,9 +891,21 @@ def get_planificacion_db(id_planificacion: int):
 
     
 # Obtiene las planificaciones para un determinado día
-def get_planificaciones_by_fecha_db(fecha: DateTime, limit: int = 100, offset: int = 0):
+def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        planificaciones = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
+        fecha = datetime.strptime(fecha, '%Y-%m-%d')
+        log.info(fecha)
+        planificaciones = db.query(Planificaciones).options(
+            joinedload(Planificaciones.turnos),
+            joinedload(Planificaciones.rutas)
+                .joinedload(Rutas.vehiculo),
+            joinedload(Planificaciones.rutas)
+                .joinedload(Rutas.rutas_turnos)
+                .joinedload(RutasTurnos.chofer),
+            joinedload(Planificaciones.rutas)
+                .joinedload(Rutas.visitas)
+        ).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
+        log.info(planificaciones)
         cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
         return planificaciones, cantidad
 
@@ -907,9 +929,10 @@ class Turnos(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
-    descripcion = Column(String, nullable=False)
-    hora_inicio = Column(DateTime, nullable=False)
-    hora_fin = Column(DateTime, nullable=False)
+    descripcion = Column(String)
+    hora_inicio = Column(Time, nullable=False)
+    hora_fin = Column(Time, nullable=False)
+    planificacion = relationship('Planificaciones', back_populates='turnos')
 
 def add_turno_db(turno):
     with get_db() as db:
@@ -949,14 +972,26 @@ class Rutas(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
     id_vehiculo = Column(Integer, ForeignKey('vehiculos.id'))
-    hora_inicio = Column(DateTime, nullable=False)
-    hora_fin = Column(DateTime, nullable=False)
+    hora_inicio = Column(Time, nullable=False)
+    hora_fin = Column(Time, nullable=False)
     geometria = Column(Geometry(geometry_type='LINESTRING', srid=4326))
     observaciones = Column(String)
+    planificacion = relationship('Planificaciones', back_populates='rutas')
+    vehiculo = relationship('Vehiculos')
+    rutas_turnos = relationship('RutasTurnos')
+    visitas = relationship('Visitas', back_populates='ruta')
 
 def add_ruta_db(ruta):
     with get_db() as db:
-        ruta_obj = Rutas(**ruta.dict())
+        geometria_wkt = WKTElement(LineString(ruta.geometria).wkt, srid=4326)
+        ruta_obj = Rutas(
+            id_planificacion=ruta.id_planificacion,
+            id_vehiculo=ruta.id_vehiculo,
+            hora_inicio=ruta.hora_inicio,
+            hora_fin=ruta.hora_fin,
+            geometria=geometria_wkt,  
+            observaciones=ruta.observaciones
+        )
         db.add(ruta_obj)
         db.commit()
         db.refresh(ruta_obj)
@@ -993,6 +1028,7 @@ class RutasTurnos(Base):
     id_ruta = Column(Integer, ForeignKey('rutas.id'))
     id_turno = Column(Integer, ForeignKey('turnos.id'))
     id_chofer = Column(Integer, ForeignKey('choferes.id'))
+    chofer = relationship('Choferes')
 
 def add_ruta_turno_db(ruta_turno):
     with get_db() as db:
@@ -1035,9 +1071,10 @@ class Visitas(Base):
     id_item = Column(Integer, nullable=False)
     tipo_item = Column(SQLAEnum(m.TipoItemVisita), nullable=False)
     estado = Column(SQLAEnum(m.EstadoVisita), nullable=False)
-    hora_llegada = Column(DateTime, nullable=False)
-    hora_salida = Column(DateTime, nullable=False)
+    hora_llegada = Column(Time, nullable=False)
+    hora_salida = Column(Time, nullable=False)
     observaciones = Column(String)
+    ruta = relationship('Rutas', back_populates='visitas')
     
 def add_visita_db(visita):
     with get_db() as db:

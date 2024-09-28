@@ -150,7 +150,7 @@ def create_sample_data():
     for _ in range(10):
         vehicle = Vehiculos(
             matricula=fake.license_plate(),
-            descripcion=fake.text(max_nb_chars=100),
+            descripcion=fake.text(max_nb_chars=50),
             capacidad_convencional=random.randint(4, 8),
             capacidad_silla_de_ruedas=random.randint(1, 2),
             disponibilidad=random.choice([True, False]),

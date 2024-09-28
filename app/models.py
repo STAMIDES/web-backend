@@ -135,32 +135,31 @@ class LugaresComunes(BaseModel):
     activo: bool
     observaciones: Optional[str] = None
 
-class Planificaciones(BaseModel):
-    id: Optional[int] = None
-    nombre: str
-    fecha: datetime
-    fechaCreacion: datetime
-    observaciones: Optional[str] = None
-
-class Turnos(BaseModel):
-    id: Optional[int] = None
-    id_planificacion: int
-    descripcion: str
-    hora_inicio: datetime
-    hora_fin: datetime
-
-class Geometria(BaseModel):
+class Geometria(BaseModel):  # REMOVEME??
     type: str
     coordinates: List[List[float]]
 
 # Una ruta pertece a una planificación y tiene un vehículo asignado, puede pertenecer a varios turnos y tiene un chofer por turno
 class Rutas(BaseModel):
     id: Optional[int] = None
-    id_planificacion: int
+    id_planificacion: int = None
     id_vehiculo: int
-    hora_inicio: datetime
-    hora_fin: datetime
-    geometria: Geometria
+    hora_inicio: time
+    hora_fin: time
+    geometria: List[List[float]]
+    observaciones: Optional[str] = None
+
+class Turnos(BaseModel):
+    id: Optional[int] = None
+    id_planificacion: int = None
+    hora_inicio: time
+    hora_fin: time
+
+class Planificaciones(BaseModel):
+    id: Optional[int] = None
+    usuario_id: int = None
+    fecha: datetime
+    fecha_creacion: datetime = None
     observaciones: Optional[str] = None
 
 class RutasTurnos(BaseModel):
