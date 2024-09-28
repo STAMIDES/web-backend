@@ -898,6 +898,7 @@ def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 
         planificaciones = db.query(Planificaciones).options(
             joinedload(Planificaciones.turnos),
             joinedload(Planificaciones.rutas)
+                .load_only(Rutas.id, Rutas.hora_fin, Rutas.hora_inicio)
                 .joinedload(Rutas.vehiculo),
             joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.rutas_turnos)
@@ -1072,7 +1073,7 @@ class Visitas(Base):
     tipo_item = Column(SQLAEnum(m.TipoItemVisita), nullable=False)
     estado = Column(SQLAEnum(m.EstadoVisita), nullable=False)
     hora_llegada = Column(Time, nullable=False)
-    hora_salida = Column(Time, nullable=False)
+    hora_salida = Column(DateTime, nullable=False)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
     
