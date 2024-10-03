@@ -139,6 +139,25 @@ class Geometria(BaseModel):  # REMOVEME??
     type: str
     coordinates: List[List[float]]
 
+class EstadoVisita(str, Enum):
+    pendiente = "Pendiente"
+    realizada = "Realizada"
+    cancelada = "Cancelada"
+
+class TipoItemVisita(str, Enum):
+    lugar_comun = "Lugar común"
+    parada = "Parada"
+
+class Visitas(BaseModel):
+    id: Optional[int] = None
+    id_ruta: int = None
+    id_item: int # id del lugar común o de la parada
+    tipo_item: TipoItemVisita
+    hora_llegada: time
+    hora_salida: time
+    estado: EstadoVisita = EstadoVisita.pendiente
+    observaciones: Optional[str] = None
+
 # Una ruta pertece a una planificación y tiene un vehículo asignado, puede pertenecer a varios turnos y tiene un chofer por turno
 class Rutas(BaseModel):
     id: Optional[int] = None
@@ -148,6 +167,7 @@ class Rutas(BaseModel):
     hora_fin: time
     geometria: List[List[float]]
     observaciones: Optional[str] = None
+    visitas: List[Visitas] = None
 
 class Turnos(BaseModel):
     id: Optional[int] = None
@@ -168,22 +188,4 @@ class RutasTurnos(BaseModel):
     id_turno: int
     id_chofer: int
 
-class EstadoVisita(str, Enum):
-    pendiente = "Pendiente"
-    realizada = "Realizada"
-    cancelada = "Cancelada"
-
-class TipoItemVisita(str, Enum):
-    lugar_comun = "Lugar común"
-    parada = "Parada"
-
-class Visitas(BaseModel):
-    id: Optional[int] = None
-    id_ruta: int
-    id_item: int # id del lugar común o de la parada
-    tipo_item: TipoItemVisita
-    hora_llegada: datetime
-    hora_salida: datetime
-    estado: EstadoVisita
-    observaciones: Optional[str] = None
 

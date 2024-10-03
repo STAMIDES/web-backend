@@ -845,6 +845,9 @@ def crear_planificacion(user_id, planificacion, turnos, rutas):
         for r in rutas:
             r.id_planificacion = planificacion_obj.id
             rutas_obj = add_ruta_db(r)
+            for v in r.visitas:
+                v.id_ruta = rutas_obj.id
+                visita_obj = add_visita_db(v)
 
         # Asocia a la planificación los vehículos, choferes y lugares comunes disponibles
         planificacion_obj.vehiculos = get_vehiculos_db()
