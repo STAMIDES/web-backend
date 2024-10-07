@@ -822,6 +822,7 @@ class Planificaciones(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey('usuarios.id'))
+    creado_por = relationship('Usuarios')
     fecha = Column(DateTime, nullable=False)
     fecha_creacion = Column(DateTime, nullable=False, default=datetime.now())
     observaciones = Column(String)
@@ -879,7 +880,8 @@ def get_planificacion_db(id_planificacion: int):
                 .joinedload(Rutas.rutas_turnos)
                 .joinedload(RutasTurnos.chofer),
             joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.visitas)
+                .joinedload(Rutas.visitas),
+            joinedload(Planificaciones.creado_por)
         ).filter(Planificaciones.id == id_planificacion).first()
 
         # Completar las visitas con sus detalles
@@ -908,6 +910,12 @@ def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 
                 .joinedload(RutasTurnos.chofer),
             joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.visitas)
+                .joinedload(Visitas.parada),
+            joinedload(Planificaciones.rutas)
+                .joinedload(Rutas.visitas)  
+                .joinedload(Visitas.lugar_comun),
+            joinedload(Planificaciones.creado_por)
+                .load_only(Usuarios.nombre)
         ).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
         log.info(planificaciones)
         cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
@@ -1079,6 +1087,9 @@ class Visitas(Base):
     hora_salida = Column(DateTime, nullable=False)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
+    parada = relationship('Paradas', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == Paradas.id, Visitas.tipo_item == 'Parada')")
+    lugar_comun = relationship('LugaresComunes', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == LugaresComunes.id, Visitas.tipo_item == 'lugar_comun')")
+
     
 def add_visita_db(visita):
     with get_db() as db:
