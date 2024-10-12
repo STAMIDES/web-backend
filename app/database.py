@@ -7,6 +7,8 @@ from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime, timedelta
 from shapely.geometry import LineString
 from geoalchemy2 import WKTElement
+from geoalchemy2.shape import to_shape
+from shapely.geometry import mapping
 
 from fastapi import HTTPException # type: ignore
 import hashlib
@@ -872,6 +874,7 @@ def add_planificacion_db(planificacion):
 # paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
 def get_planificacion_db(id_planificacion: int):
     with get_db() as db:
+        log.info(id_planificacion)
         planificacion = db.query(Planificaciones).options(
             joinedload(Planificaciones.turnos),
             joinedload(Planificaciones.rutas)
@@ -886,6 +889,9 @@ def get_planificacion_db(id_planificacion: int):
 
         # Completar las visitas con sus detalles
         for ruta in planificacion.rutas:
+            if ruta.geometria:
+                ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
+                ruta.geometria = ruta_geometria_geojson['coordinates']
             for visita in ruta.visitas:
                 if visita.tipo_item == m.TipoItemVisita.parada:
                     visita.item = db.query(Paradas).filter(Paradas.id == visita.id_item).first()
