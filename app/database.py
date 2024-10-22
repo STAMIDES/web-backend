@@ -496,7 +496,7 @@ def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
         pedidos = db.query(Pedidos).options(
             joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),
-            joinedload(Pedidos.paradas)
+            joinedload(Pedidos.paradas).joinedload(Paradas.tipo_parada)
         ).filter(Pedidos.fecha_programado == fecha).offset(offset).limit(limit).all()
         cantidad = db.query(Pedidos).filter(Pedidos.fecha_programado == fecha).count()
         return pedidos, cantidad
@@ -569,6 +569,7 @@ class Paradas(Base):
     tipo = Column(Integer, ForeignKey('tipo_parada.id'))
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
+    tipo_parada = relationship('TiposParadas')
 
 # Agrega una parada a un pedido
 def add_parada_pedido_db(parada, id_pedido):
@@ -997,7 +998,7 @@ class Rutas(Base):
     planificacion = relationship('Planificaciones', back_populates='rutas')
     vehiculo = relationship('Vehiculos')
     rutas_turnos = relationship('RutasTurnos')
-    visitas = relationship('Visitas', back_populates='ruta')
+    visitas = relationship('Visitas', back_populates='ruta', order_by='Visitas.hora_llegada')
 
 def add_ruta_db(ruta):
     with get_db() as db:
@@ -1093,6 +1094,7 @@ class Visitas(Base):
     hora_salida = Column(DateTime, nullable=False)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
+    tipo_parada_id = Column(Integer, ForeignKey('tipo_parada.id'))
     parada = relationship('Paradas', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == Paradas.id, Visitas.tipo_item == 'Parada')")
     lugar_comun = relationship('LugaresComunes', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == LugaresComunes.id, Visitas.tipo_item == 'lugar_comun')")
 
