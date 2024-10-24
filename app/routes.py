@@ -737,8 +737,8 @@ def add_planificacion(
         ):
     try:
         user_id: int = token_payload.get("user_id")
-        db.crear_planificacion(user_id, planificacion, turnos, rutas)
-        return {"planificacion": planificacion}
+        nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas)
+        return {"planificacion": nueva_planificacion}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
