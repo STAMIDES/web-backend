@@ -303,12 +303,12 @@ def get_clientes_db(limit: int = 100, offset: int = 0, search: str = ''):
                     Clientes.nombre.ilike(f'%{search}%'),
                     Clientes.apellido.ilike(f'%{search}%'),
                     cast(Clientes.documento, String).ilike(f'%{search}%'),
-                    cast(Clientes.tipo, String).ilike(f'%{search}%')
+                    Clientes.caracteristicas.any(Caracteristicas.nombre.ilike(f'%{search}%'))
                 )
             )
         clientes = db.query(Clientes).options(
-            joinedload(Clientes.caracteristicas)).filter(search_func).offset(offset).limit(limit).all()
-        log.info(f"Clientes: {clientes}")
+            joinedload(Clientes.caracteristicas)
+        ).filter(search_func).offset(offset).limit(limit).all()
         cantidad = db.query(Clientes).filter(search_func).count()
         return clientes, cantidad
 
