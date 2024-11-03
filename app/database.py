@@ -271,7 +271,8 @@ def add_cliente_db(cliente):
 
 def get_cliente(id):
     with get_db() as db:
-        cliente = db.query(Clientes).filter(Clientes.id == id).first()
+        cliente = db.query(Clientes).options(
+            joinedload(Clientes.caracteristicas)).filter(Clientes.id == id).first()
         return cliente
 
 def get_cliente_by_doc(documento):
@@ -305,7 +306,8 @@ def get_clientes_db(limit: int = 100, offset: int = 0, search: str = ''):
                     cast(Clientes.tipo, String).ilike(f'%{search}%')
                 )
             )
-        clientes = db.query(Clientes).filter(search_func).offset(offset).limit(limit).all()
+        clientes = db.query(Clientes).options(
+            joinedload(Clientes.caracteristicas)).filter(search_func).offset(offset).limit(limit).all()
         log.info(f"Clientes: {clientes}")
         cantidad = db.query(Clientes).filter(search_func).count()
         return clientes, cantidad
@@ -853,15 +855,7 @@ def crear_planificacion(user_id, planificacion, turnos, rutas):
                 v.id_ruta = rutas_obj.id
                 visita_obj = add_visita_db(v)
 
-        # Asocia a la planificación los vehículos, choferes y lugares comunes disponibles
-        planificacion_obj.vehiculos = get_vehiculos_db()
-        planificacion_obj.choferes = get_choferes_db()
-        planificacion_obj.lugares_comunes = get_lugares_comunes_db()
-
-        # Asocia a la planificación los pedidos para su fecha
-        planificacion_obj.pedios = get_pedidos_by_fecha_db(datetime.strftime(planificacion_obj.fecha, '%Y-%m-%d'))
-
-        return planificacion_obj
+        return get_planificacion_db(planificacion_obj.id)
 
 def add_planificacion_db(planificacion):
     with get_db() as db:
