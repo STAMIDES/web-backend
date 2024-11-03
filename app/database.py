@@ -343,9 +343,32 @@ def get_clientes_by_caracteristica_db(caracteristica: str, limit: int = 100, off
 def update_cliente_db(documento, cliente):
     with get_db() as db:
         # Update client in the database based on document
-        db.query(Clientes).filter(Clientes.documento == documento).update(cliente)
+        cliente_obj = cliente.dict()
+        caracteristicas = cliente_obj.pop('caracteristicas', [])
+        db.query(Clientes).filter(Clientes.documento == documento).update(cliente_obj)
         db.commit()
-        return cliente
+        
+        cliente_id = db.query(Clientes.id).filter(Clientes.documento == documento).scalar()
+        
+        if caracteristicas:
+            existing_caracteristicas = db.query(ClientesCaracteristicas).filter(ClientesCaracteristicas.id_cliente == cliente_id).all()
+            existing_ids = {c.id_caracteristica for c in existing_caracteristicas}
+            new_ids = set(caracteristicas)
+            
+            to_add = new_ids - existing_ids
+            to_remove = existing_ids - new_ids
+            
+            for caracteristica in to_add:
+                caracteristica_obj = ClientesCaracteristicas(id_cliente=cliente_id, id_caracteristica=caracteristica)
+                db.add(caracteristica_obj)
+            
+            for caracteristica in to_remove:
+                db.query(ClientesCaracteristicas).filter(ClientesCaracteristicas.id_cliente == cliente_id, ClientesCaracteristicas.id_caracteristica == caracteristica).delete()
+        
+        db.commit()
+        updated_cliente = db.query(Clientes).options(
+            joinedload(Clientes.caracteristicas)).filter(Clientes.documento == documento).first()
+        return updated_cliente
 
 def delete_cliente_db(id):
     with get_db() as db:

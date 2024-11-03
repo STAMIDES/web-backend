@@ -229,8 +229,8 @@ def add_cliente(cliente: Clientes):
 @clientes_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
 def update_cliente(documento: int, cliente: Clientes):
     try:
-        db.update_cliente_db(documento, cliente)
-        return {"cliente": cliente}
+        updated_cliente = db.update_cliente_db(documento, cliente)
+        return  updated_cliente
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -295,7 +295,7 @@ caracteristicas_router = APIRouter()
 @caracteristicas_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_caracteristicas(limit: int = 10, offset: int = 0):
     try:
-        return db.get_caracteristicas_db(limit, offset)
+        return db.get_caracteristicas_db()
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
