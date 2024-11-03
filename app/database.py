@@ -700,13 +700,20 @@ def get_vehiculos_by_activo_db(activo: bool, limit: int = 100, offset: int = 0):
 
 def update_vehiculo_db(id_vehiculo, vehiculo):
     with get_db() as db:
-        db.query(Vehiculos).filter(Vehiculos.id_vehiculo == id_vehiculo).update(vehiculo.dict())
+        db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).update({
+            'matricula': vehiculo.matricula,
+            'descripcion': vehiculo.descripcion,
+            'documento_chofer_habitual': vehiculo.documento_chofer_habitual,
+            'capacidad_convencional': vehiculo.capacidad_convencional,
+            'capacidad_silla_de_ruedas': vehiculo.capacidad_silla_de_ruedas,
+            'observaciones': vehiculo.observaciones
+        })
         db.commit()
         return vehiculo
     
 def delete_vehiculo_db(id_vehiculo):
     with get_db() as db:
-        db.query(Vehiculos).filter(Vehiculos.id_vehiculo == id_vehiculo).delete()
+        db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).delete()
         db.commit()
         return {"message": f"Vehículo con ID {id_vehiculo} eliminado correctamente."}
     
@@ -781,9 +788,9 @@ def get_choferes_by_activo_db(activo, limit: int = 100, offset: int = 0):
         choferes = db.query(Choferes).filter(Choferes.activo == activo).all()
         return choferes
 
-def update_chofer_db(documento, chofer):
+def update_chofer_db(id, chofer):
     with get_db() as db:
-        db.query(Choferes).filter(Choferes.documento == documento).update(chofer.dict())
+        db.query(Choferes).filter(Choferes.id == id).update(chofer.dict())
         db.commit()
         return chofer
     

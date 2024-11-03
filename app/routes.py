@@ -523,8 +523,8 @@ def add_vehiculo(vehiculo: Vehiculos):
 @vehiculos_router.put("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def update_vehiculo(id_vehiculo: int, vehiculo: Vehiculos):
     try:
-        db.update_vehiculo_db(id_vehiculo, vehiculo)
-        return {"vehiculo": vehiculo}
+        nuevo_vehiculo = db.update_vehiculo_db(id_vehiculo, vehiculo)
+        return {"vehiculo": nuevo_vehiculo}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -624,11 +624,11 @@ def add_chofer(chofer: Choferes):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@choferes_router.put("/{documento}", dependencies=[Depends(JWTBearer())])
-def update_chofer(documento: int, chofer: Choferes):
+@choferes_router.put("/{id}", dependencies=[Depends(JWTBearer())])
+def update_chofer(id: int, chofer: Choferes):
     try:
-        db.update_chofer_db(documento, chofer)
-        return {"chofer": chofer}
+        nuevo_chofer = db.update_chofer_db(id, chofer)
+        return {"chofer": nuevo_chofer}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
