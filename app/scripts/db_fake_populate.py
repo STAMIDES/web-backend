@@ -153,7 +153,7 @@ def create_sample_data():
             descripcion=fake.text(max_nb_chars=50),
             capacidad_convencional=random.randint(4, 8),
             capacidad_silla_de_ruedas=random.randint(1, 2),
-            disponibilidad=random.choice([True, False]),
+            activo=random.choice([True, False]),
             observaciones=fake.text(max_nb_chars=200)
         )
         db.add(vehicle)

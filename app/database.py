@@ -645,7 +645,6 @@ class Vehiculos(Base):
     documento_chofer_habitual = Column(Integer, ForeignKey('choferes.documento'))
     capacidad_convencional = Column(Integer, nullable=False)
     capacidad_silla_de_ruedas = Column(Integer, nullable=False)
-    disponibilidad = Column(Boolean, default=True)
     activo = Column(Boolean, default=True)
     observaciones = Column(String)
 
