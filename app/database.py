@@ -682,10 +682,14 @@ def get_vehiculo_db(id_vehiculo):
     with get_db() as db:
         return db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).first()
 
-def get_vehiculos_db(limit: int = 100, offset: int = 0):
+def get_vehiculos_db(limit: int = 100, offset: int = 0, active_only: bool = False):
     with get_db() as db:
-        vehiculos = db.query(Vehiculos).offset(offset).limit(limit).all()
-        cantidad = db.query(Vehiculos).count()
+        if active_only:
+            vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == True).offset(offset).limit(limit).all()
+            cantidad = db.query(Vehiculos).filter(Vehiculos.activo == True).count()
+        else:
+            vehiculos = db.query(Vehiculos).order_by(Vehiculos.activo.desc()).offset(offset).limit(limit).all()
+            cantidad = db.query(Vehiculos).count()
         return vehiculos, cantidad
 
 def get_vehiculo_by_matricula_db(matricula):
@@ -710,6 +714,12 @@ def update_vehiculo_db(id_vehiculo, vehiculo):
         })
         db.commit()
         return vehiculo
+
+def update_vehiculo_estado_db(id_vehiculo, activo):
+    with get_db() as db:
+        activo_bool = activo.lower() in ['true', '1', 't', 'y', 'yes']
+        db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).update({"activo": activo_bool})
+        db.commit()
     
 def delete_vehiculo_db(id_vehiculo):
     with get_db() as db:
@@ -777,10 +787,14 @@ def get_chofer_db(id):
     with get_db() as db:
         return db.query(Choferes).filter(Choferes.id == id).first()
     
-def get_choferes_db(limit: int = 100, offset: int = 0):
+def get_choferes_db(limit: int = 100, offset: int = 0, active_only: bool = False):
     with get_db() as db:
-        choferes = db.query(Choferes).offset(offset).limit(limit).all()
-        cantidad = db.query(Choferes).count()
+        if active_only:
+            choferes = db.query(Choferes).filter(Choferes.activo == True).offset(offset).limit(limit).all()
+            cantidad = db.query(Choferes).filter(Choferes.activo == True).count()
+        else:
+            choferes = db.query(Choferes).order_by(Choferes.activo.desc()).offset(offset).limit(limit).all()
+            cantidad = db.query(Choferes).count()
         return choferes, cantidad
 
 def get_choferes_by_activo_db(activo, limit: int = 100, offset: int = 0):
@@ -793,7 +807,13 @@ def update_chofer_db(id, chofer):
         db.query(Choferes).filter(Choferes.id == id).update(chofer.dict())
         db.commit()
         return chofer
-    
+
+def update_chofer_estado_db(id_chofer, activo):
+    with get_db() as db:
+        activo_bool = activo.lower() in ['true', '1', 't', 'y', 'yes']
+        db.query(Choferes).filter(Choferes.id == id_chofer).update({"activo": activo_bool})
+        db.commit()
+
 def delete_chofer_db(documento):
     with get_db() as db:
         db.query(Choferes).filter(Choferes.documento == documento).delete()
@@ -826,10 +846,14 @@ def get_lugar_comun_db(id):
     with get_db() as db:
         return db.query(LugaresComunes).filter(LugaresComunes.id == id).first()
 
-def get_lugares_comunes_db(limit: int = 100, offset: int = 0):
+def get_lugares_comunes_db(limit: int = 100, offset: int = 0, actives_only: bool = False):
     with get_db() as db:
-        lugares_comunes = db.query(LugaresComunes).offset(offset).limit(limit).all()
-        cantidad = db.query(LugaresComunes).count()
+        if actives_only:
+            lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == True).offset(offset).limit(limit).all()
+            cantidad = db.query(LugaresComunes).filter(LugaresComunes.activo == True).count()
+        else:
+            lugares_comunes = db.query(LugaresComunes).order_by(LugaresComunes.activo.desc()).offset(offset).limit(limit).all()
+            cantidad = db.query(LugaresComunes).count()
         return lugares_comunes, cantidad
 
 def get_lugares_comunes_by_activo_db(activo, limit: int = 100, offset: int = 0):
@@ -842,7 +866,13 @@ def update_lugar_comun_db(id, deposito):
         db.query(LugaresComunes).filter(LugaresComunes.id == id).update(deposito.dict())
         db.commit()
         return deposito
-    
+
+def update_lugar_comun_estado_db(id_lugar_comun, activo):
+    with get_db() as db:
+        activo_bool = activo.lower() in ['true', '1', 't', 'y', 'yes']
+        db.query(LugaresComunes).filter(LugaresComunes.id == id_lugar_comun).update({"activo": activo_bool})
+        db.commit()
+
 def delete_lugar_comun_db(id):
     with get_db() as db:
         db.query(LugaresComunes).filter(LugaresComunes.id == id).delete()

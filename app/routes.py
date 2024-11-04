@@ -528,6 +528,14 @@ def update_vehiculo(id_vehiculo: int, vehiculo: Vehiculos):
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@vehiculos_router.put("/estado/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
+def update_vehiculo(id_vehiculo: int, activo):
+    try:
+        db.update_vehiculo_estado_db(id_vehiculo, activo)
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @vehiculos_router.delete("/{id_vehiculo}", dependencies=[Depends(JWTBearer())])
 def delete_vehiculo(id_vehiculo: int):
@@ -632,6 +640,14 @@ def update_chofer(id: int, chofer: Choferes):
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@choferes_router.put("/estado/{id_chofer}", dependencies=[Depends(JWTBearer())])
+def update_chofer(id_chofer: int, activo):
+    try:
+        db.update_chofer_estado_db(id_chofer, activo)
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @choferes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
 def delete_chofer(documento: int):
@@ -688,8 +704,16 @@ def add_lugar_comun(lugar: LugaresComunes):
 @lugares_comunes_router.put("/{id_lugar}", dependencies=[Depends(JWTBearer())])
 def update_lugar_comun(id_lugar: int, lugar: LugaresComunes):
     try:
-        db.update_lugar_comun_db(id_lugar, lugar)
-        return {"lugar": lugar}
+        nuevo_lugar = db.update_lugar_comun_db(id_lugar, lugar)
+        return {"lugar": nuevo_lugar}
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@lugares_comunes_router.put("/estado/{id_lugar}", dependencies=[Depends(JWTBearer())])
+def update_lugar_comun(id_lugar: int, activo):
+    try:
+        db.update_lugar_comun_estado_db(id_lugar, activo)
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
