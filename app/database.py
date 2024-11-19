@@ -948,7 +948,9 @@ def get_planificacion_db(id_planificacion: int):
                 ruta.geometria = ruta_geometria_geojson['coordinates']
             for visita in ruta.visitas:
                 if visita.tipo_item == m.TipoItemVisita.parada:
-                    visita.item = db.query(Paradas).filter(Paradas.id == visita.id_item).first()
+                    visita.item = db.query(Paradas).options(
+                        joinedload(Paradas.tipo_parada)
+                    ).filter(Paradas.id == visita.id_item).first()
                 else:
                     visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
 
