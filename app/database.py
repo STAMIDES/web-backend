@@ -377,6 +377,15 @@ def delete_cliente_db(id):
         db.commit()
         return {"message": f"Cliente eliminado correctamente."}
 
+def activate_cliente_db(documento):
+    with get_db() as db:
+        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        if cliente:
+            cliente.activo = True
+            db.commit()
+            return {"message": f"Cliente activado correctamente."}
+        else:
+            return {"message": f"Cliente no encontrado."}
 # endregion
 
 # region ClientesCaracteristicas
