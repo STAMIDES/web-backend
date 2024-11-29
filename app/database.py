@@ -901,7 +901,7 @@ class Planificaciones(Base):
     observaciones = Column(String)
 
     turnos = relationship('Turnos', back_populates='planificacion')
-    rutas = relationship('Rutas', back_populates='planificacion')
+    rutas = relationship('Rutas', back_populates='planificacion', order_by='Rutas.hora_inicio')
 
 # Crea un planificación y dos turnos asociados
 def crear_planificacion(user_id, planificacion, turnos, rutas):
