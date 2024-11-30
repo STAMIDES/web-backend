@@ -604,6 +604,7 @@ class Paradas(Base):
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
     tipo_parada = relationship('TiposParadas')
+    pedido = relationship('Pedidos', foreign_keys=[id_pedido])
 
 # Agrega una parada a un pedido
 def add_parada_pedido_db(parada, id_pedido):
@@ -958,7 +959,8 @@ def get_planificacion_db(id_planificacion: int):
             for visita in ruta.visitas:
                 if visita.tipo_item == m.TipoItemVisita.parada:
                     visita.item = db.query(Paradas).options(
-                        joinedload(Paradas.tipo_parada)
+                        joinedload(Paradas.tipo_parada),
+                        joinedload(Paradas.pedido).joinedload(Pedidos.cliente)
                     ).filter(Paradas.id == visita.id_item).first()
                 else:
                     visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
@@ -1158,7 +1160,6 @@ class Visitas(Base):
     hora_salida = Column(DateTime, nullable=False)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
-    tipo_parada_id = Column(Integer, ForeignKey('tipo_parada.id'))
     parada = relationship('Paradas', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == Paradas.id, Visitas.tipo_item == 'Parada')")
     lugar_comun = relationship('LugaresComunes', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == LugaresComunes.id, Visitas.tipo_item == 'lugar_comun')")
 
