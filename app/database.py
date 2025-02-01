@@ -379,6 +379,15 @@ def delete_cliente_db(id):
         db.commit()
         return {"message": f"Cliente eliminado correctamente."}
 
+def activate_cliente_db(documento):
+    with get_db() as db:
+        cliente = db.query(Clientes).filter(Clientes.documento == documento).first()
+        if cliente:
+            cliente.activo = True
+            db.commit()
+            return {"message": f"Cliente activado correctamente."}
+        else:
+            return {"message": f"Cliente no encontrado."}
 # endregion
 
 # region ClientesCaracteristicas
@@ -638,6 +647,7 @@ class Paradas(Base):
     observaciones = Column(String)
     pedido = relationship('Pedidos', back_populates='paradas')
     tipo_parada = relationship('TiposParadas')
+    pedido = relationship('Pedidos', foreign_keys=[id_pedido])
 
 # Agrega una parada a un pedido
 def add_parada_pedido_db(parada, id_pedido):
@@ -935,7 +945,7 @@ class Planificaciones(Base):
     observaciones = Column(String)
 
     turnos = relationship('Turnos', back_populates='planificacion')
-    rutas = relationship('Rutas', back_populates='planificacion')
+    rutas = relationship('Rutas', back_populates='planificacion', order_by='Rutas.hora_inicio')
 
 # Crea un planificación y dos turnos asociados
 def crear_planificacion(user_id, planificacion, turnos, rutas):
@@ -991,7 +1001,10 @@ def get_planificacion_db(id_planificacion: int):
                 ruta.geometria = ruta_geometria_geojson['coordinates']
             for visita in ruta.visitas:
                 if visita.tipo_item == m.TipoItemVisita.parada:
-                    visita.item = db.query(Paradas).filter(Paradas.id == visita.id_item).first()
+                    visita.item = db.query(Paradas).options(
+                        joinedload(Paradas.tipo_parada),
+                        joinedload(Paradas.pedido).joinedload(Pedidos.cliente)
+                    ).filter(Paradas.id == visita.id_item).first()
                 else:
                     visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
 
@@ -1190,7 +1203,6 @@ class Visitas(Base):
     hora_salida = Column(Time, nullable=False)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
-    tipo_parada_id = Column(Integer, ForeignKey('tipo_parada.id'))
     parada = relationship('Paradas', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == Paradas.id, Visitas.tipo_item == 'Parada')")
     lugar_comun = relationship('LugaresComunes', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == LugaresComunes.id, Visitas.tipo_item == 'lugar_comun')")
 

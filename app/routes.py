@@ -180,8 +180,8 @@ def get_clientes(limit: int = 10, offset: int = 0, search: str = ''):
 @clientes_router.get("/doc/{documento}", dependencies=[Depends(JWTBearer())])
 def get_clientes_documento(documento: int, limit: int = 10, offset: int = 0):
     try:
-        clientes = db.get_clientes_by_documento_db(documento, limit, offset)
-        return {"clientes": clientes}
+        clientes, cantidad = db.get_clientes_by_documento_db(documento, limit, offset)
+        return {"clientes": clientes, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
@@ -219,7 +219,7 @@ def add_cliente(cliente: Clientes):
         if not db.get_cliente_by_doc(cliente.documento):
             cliente = db.add_cliente_db(cliente)
             return {"cliente": cliente}
-        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")
+        raise HTTPException(status_code=400, detail="Ya esxiste un cliente con ese documentos.")
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -244,6 +244,14 @@ def delete_cliente(id: int):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
+@clientes_router.put("/activar/{documento}", dependencies=[Depends(JWTBearer())])
+def activate_cliente(documento: int):
+    try:
+        message = db.activate_cliente_db(documento)
+        return message
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 # endregion
 
 # region ClientesCaracteristicas
