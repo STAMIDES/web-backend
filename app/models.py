@@ -39,6 +39,8 @@ class Clientes(BaseModel):
     nombre: str
     apellido: str
     direccion: Optional[str] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     observaciones: Optional[str] = None
@@ -149,7 +151,7 @@ class TipoItemVisita(str, Enum):
 
 class Visitas(BaseModel):
     id: Optional[int] = None
-    id_ruta: int = None
+    id_ruta: Optional[int] = None
     id_item: int # id del lugar común o de la parada
     tipo_item: TipoItemVisita
     hora_llegada: time

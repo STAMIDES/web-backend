@@ -231,6 +231,8 @@ class Clientes(Base):
     nombre = Column(String, nullable=False)
     apellido = Column(String, nullable=False)
     direccion = Column(String)
+    latitud = Column(Float)
+    longitud = Column(Float)
     telefono = Column(String)
     email = Column(String)
     observaciones = Column(String)
@@ -528,7 +530,48 @@ def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
 
 def update_pedido_db(id_pedido, pedido):
     with get_db() as db:
-        db.query(Pedidos).filter(Pedidos.id == id_pedido).update(pedido.dict())
+        # Verificar si el pedido existe
+        existing_pedido = db.query(Pedidos).filter(Pedidos.id == id_pedido).first()
+        if not existing_pedido:
+            raise HTTPException(status_code=404, detail="Pedido no encontrado.")
+
+        # Verificar si el cliente existe
+        cliente_existente = db.query(Clientes).filter(Clientes.documento == pedido.cliente_documento).first()
+        if not cliente_existente:
+            raise HTTPException(status_code=400, detail="El cliente especificado no existe.")
+
+        # Validar formato de fecha programada
+        if not isinstance(pedido.fecha_programado, datetime):
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido. Se espera un objeto datetime.")
+
+        # Convertir el pedido a diccionario sin los valores no enviados
+        update_data = pedido.dict(exclude_unset=True)
+        update_data.pop("id", None)
+        update_data.pop("paradas", None)
+
+        # Actualizar el pedido en la base de datos
+        db.query(Pedidos).filter(Pedidos.id == id_pedido).update(update_data)
+
+        # Eliminar paradas antiguas
+        db.query(Paradas).filter(Paradas.id_pedido == id_pedido).delete()
+
+        # Agregar nuevas paradas asegurando el orden correcto
+        nuevas_paradas = []
+        for index, parada in enumerate(pedido.paradas):
+            nueva_parada = Paradas(
+                id_pedido=id_pedido,
+                posicion_en_pedido=index,
+                direccion=parada.direccion,
+                latitud=parada.latitud,
+                longitud=parada.longitud,
+                ventana_horaria_inicio=parada.ventana_horaria_inicio,
+                ventana_horaria_fin=parada.ventana_horaria_fin,
+                tipo=parada.tipo,
+                observaciones=parada.observaciones
+            )
+            nuevas_paradas.append(nueva_parada)
+
+        db.add_all(nuevas_paradas)
         db.commit()
         return pedido
 
@@ -907,7 +950,7 @@ def crear_planificacion(user_id, planificacion, turnos, rutas):
             t.id_planificacion = planificacion_obj.id
             #turno = Turnos(id_planificacion=planificacion_obj.id, **t)
             turno = add_turno_db(t)
-        for r in rutas:
+        for r in rutas: 
             r.id_planificacion = planificacion_obj.id
             rutas_obj = add_ruta_db(r)
             for v in r.visitas:
@@ -1144,7 +1187,7 @@ class Visitas(Base):
     tipo_item = Column(SQLAEnum(m.TipoItemVisita), nullable=False)
     estado = Column(SQLAEnum(m.EstadoVisita), nullable=False)
     hora_llegada = Column(Time, nullable=False)
-    hora_salida = Column(DateTime, nullable=False)
+    hora_salida = Column(Time, nullable=False)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
     tipo_parada_id = Column(Integer, ForeignKey('tipo_parada.id'))

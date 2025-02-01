@@ -363,11 +363,13 @@ def add_pedido(pedido: Pedidos):
 @pedidos_router.put("/{id_pedido}", dependencies=[Depends(JWTBearer())])
 def update_pedido(id_pedido: int, pedido: Pedidos):
     try:
-        db.update_pedido_db(id_pedido, pedido)
-        return {"pedido": pedido}
+        updated_pedido = db.update_pedido_db(id_pedido, pedido)
+        return {"pedido": updated_pedido}
+    except HTTPException as e:
+        raise e  # Excepciones ya manejadas en database.py
     except Exception as e:
         log.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 @pedidos_router.delete("/{id_pedido}", dependencies=[Depends(JWTBearer())])
 def delete_pedido(id_pedido: int):
