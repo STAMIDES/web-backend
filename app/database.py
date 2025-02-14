@@ -561,35 +561,19 @@ def update_pedido_db(id_pedido, pedido):
         # Actualizar el pedido en la base de datos
         db.query(Pedidos).filter(Pedidos.id == id_pedido).update(update_data)
 
-        # Eliminar paradas antiguas
-        db.query(Paradas).filter(Paradas.id_pedido == id_pedido).delete()
-
-        # Agregar nuevas paradas asegurando el orden correcto
-        nuevas_paradas = []
-        for index, parada in enumerate(pedido.paradas):
-            nueva_parada = Paradas(
-                id_pedido=id_pedido,
-                posicion_en_pedido=index,
-                direccion=parada.direccion,
-                latitud=parada.latitud,
-                longitud=parada.longitud,
-                ventana_horaria_inicio=parada.ventana_horaria_inicio,
-                ventana_horaria_fin=parada.ventana_horaria_fin,
-                tipo=parada.tipo,
-                observaciones=parada.observaciones
-            )
-            nuevas_paradas.append(nueva_parada)
-
-        db.add_all(nuevas_paradas)
         db.commit()
         return pedido
 
 def delete_pedido_db(id_pedido):
     with get_db() as db:
+        # Delete related records in the paradas table
+        db.query(Paradas).filter(Paradas.id_pedido == id_pedido).delete()
+        
+        # Delete the pedido record
         db.query(Pedidos).filter(Pedidos.id == id_pedido).delete()
+        
         db.commit()
         return {"message": f"Pedido con ID {id_pedido} eliminado correctamente."}
-    
 # endregion
 
 # region TipoParada
