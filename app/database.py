@@ -147,37 +147,18 @@ def get_user_by_email(email: str):
         user = db.query(Usuarios).filter(Usuarios.email == email).first()
         return user
 
-def logout(access_token: str):
+def logout(refresh_token: str):
     with get_db() as db:
-        
-        result = get_refresh_token_and_user(access_token)
-        log.info(result)
-        if result:
-            refresh_token, user = result
-            log.info(user)
-            log.info(f"Found user: {user.id}")
-            log.info(refresh_token)
-            if user:
-                user.token = None
-            refresh_token.is_revoked = True
-            db.flush()
-        
-            # Now commit the changes
-            db.commit()
-            log.info("Successfully committed changes to database")
-            
-            return True
-
-def get_refresh_token_and_user(access_token: str):
-    with get_db() as db:
-        # Find the user first
-        user = db.query(Usuarios).filter(Usuarios.token == access_token).first()
+        user = db.query(Usuarios, RefreshToken).\
+            join(RefreshToken, Usuarios.id == RefreshToken.user_id).\
+            filter( RefreshToken.token == refresh_token).\
+            first()
         if not user:
-            return None
-            
-        # Find the associated refresh token
-        refresh_token = db.query(RefreshToken).filter(RefreshToken.user_id == user.id).first()
-        return (refresh_token, user)
+            return False
+        db.query(Usuarios).filter(Usuarios.id == user.Usuarios.id).update({"token": None})
+        db.query(RefreshToken).filter(RefreshToken.token == refresh_token).update({"is_revoked": True})
+        db.commit()
+        return True
 
 
 def is_refresh_token_valid(user_id: int, refresh_token: str):

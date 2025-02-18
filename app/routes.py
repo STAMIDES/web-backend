@@ -128,23 +128,23 @@ def login(request: LoginRequest, response: Response):
             httponly=True,
             secure=True,
             samesite='lax',
-            max_age=60  # 1 hour
+            max_age=3600  # 1 hour
         )
         response.set_cookie(
             key="refresh_token", 
             value=refresh_token,
-            path='/usuarios/refresh',
+            path='/usuarios/logout',
             httponly=True,
             secure=True,
             samesite='lax',
-            max_age=7*24*3600  # 7 days
+            max_age=6*31*24*3600  # 6 months
         )
         
         return {"message": "Login successful"}
     except Exception as e:
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
-@usuarios_router.post("/refresh")
+@usuarios_router.post("/logout/refresh")
 def refresh_token(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -170,7 +170,7 @@ def refresh_token(request: Request, response: Response):
         httponly=True,
         secure=True,
         samesite='lax',
-        max_age=60  # 1 hour
+        max_age=3600  # 1 day
     )
     
     return {"message": "Token refreshed successfully"}
@@ -178,9 +178,9 @@ def refresh_token(request: Request, response: Response):
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
 def logout(request: Request, response: Response):
     try:
-        access_token = request.cookies.get("access_token")
-        if access_token:
-            db.logout(access_token)
+        refresh_token = request.cookies.get("refresh_token")
+        if refresh_token:
+            db.logout(refresh_token)
         response.delete_cookie(key="access_token")
         response.delete_cookie(key="refresh_token", path='/usuarios/refresh')
         return {"message": "Usuario desconectado correctamente"}
