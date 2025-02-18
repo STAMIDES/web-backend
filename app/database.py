@@ -147,27 +147,37 @@ def get_user_by_email(email: str):
         user = db.query(Usuarios).filter(Usuarios.email == email).first()
         return user
 
-def logout(refresh_token: str, email: str):
+def logout(access_token: str):
     with get_db() as db:
-        user = get_user_by_email(email)
+        
+        result = get_refresh_token_and_user(access_token)
+        log.info(result)
+        if result:
+            refresh_token, user = result
+            log.info(user)
+            log.info(f"Found user: {user.id}")
+            log.info(refresh_token)
+            if user:
+                user.token = None
+            refresh_token.is_revoked = True
+            db.flush()
+        
+            # Now commit the changes
+            db.commit()
+            log.info("Successfully committed changes to database")
+            
+            return True
+
+def get_refresh_token_and_user(access_token: str):
+    with get_db() as db:
+        # Find the user first
+        user = db.query(Usuarios).filter(Usuarios.token == access_token).first()
         if not user:
-            raise HTTPException(status_code=401, detail=f"User with email {email} not found")
-        
-        db_token = get_refresh_token(refresh_token)
-        if db_token:
-            db_token.is_revoked = True
-        else:
-            log.error(f"Warning: Refresh token not found for user {email}")
-
-        user.token = None
-        
-        db.commit()
-        return {"message": f"User {email} successfully logged out."}
-
-
-def get_refresh_token(token: str):
-    with get_db() as db:
-        return db.query(RefreshToken).filter(RefreshToken.token == token).first()
+            return None
+            
+        # Find the associated refresh token
+        refresh_token = db.query(RefreshToken).filter(RefreshToken.user_id == user.id).first()
+        return (refresh_token, user)
 
 
 def is_refresh_token_valid(user_id: int, refresh_token: str):
