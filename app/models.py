@@ -133,7 +133,7 @@ class LugaresComunes(BaseModel):
     direccion: str
     latitud: Optional[float] = None
     longitud: Optional[float] = None
-    activo: bool
+    activo: Optional [bool] = True
     observaciones: Optional[str] = None
 
 class Geometria(BaseModel):  # REMOVEME??
