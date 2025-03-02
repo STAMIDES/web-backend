@@ -147,27 +147,18 @@ def get_user_by_email(email: str):
         user = db.query(Usuarios).filter(Usuarios.email == email).first()
         return user
 
-def logout(refresh_token: str, email: str):
+def logout(refresh_token: str):
     with get_db() as db:
-        user = get_user_by_email(email)
+        user = db.query(Usuarios, RefreshToken).\
+            join(RefreshToken, Usuarios.id == RefreshToken.user_id).\
+            filter( RefreshToken.token == refresh_token).\
+            first()
         if not user:
-            raise HTTPException(status_code=401, detail=f"User with email {email} not found")
-        
-        db_token = get_refresh_token(refresh_token)
-        if db_token:
-            db_token.is_revoked = True
-        else:
-            log.error(f"Warning: Refresh token not found for user {email}")
-
-        user.token = None
-        
+            return False
+        db.query(Usuarios).filter(Usuarios.id == user.Usuarios.id).update({"token": None})
+        db.query(RefreshToken).filter(RefreshToken.token == refresh_token).update({"is_revoked": True})
         db.commit()
-        return {"message": f"User {email} successfully logged out."}
-
-
-def get_refresh_token(token: str):
-    with get_db() as db:
-        return db.query(RefreshToken).filter(RefreshToken.token == token).first()
+        return True
 
 
 def is_refresh_token_valid(user_id: int, refresh_token: str):
@@ -561,35 +552,19 @@ def update_pedido_db(id_pedido, pedido):
         # Actualizar el pedido en la base de datos
         db.query(Pedidos).filter(Pedidos.id == id_pedido).update(update_data)
 
-        # Eliminar paradas antiguas
-        db.query(Paradas).filter(Paradas.id_pedido == id_pedido).delete()
-
-        # Agregar nuevas paradas asegurando el orden correcto
-        nuevas_paradas = []
-        for index, parada in enumerate(pedido.paradas):
-            nueva_parada = Paradas(
-                id_pedido=id_pedido,
-                posicion_en_pedido=index,
-                direccion=parada.direccion,
-                latitud=parada.latitud,
-                longitud=parada.longitud,
-                ventana_horaria_inicio=parada.ventana_horaria_inicio,
-                ventana_horaria_fin=parada.ventana_horaria_fin,
-                tipo=parada.tipo,
-                observaciones=parada.observaciones
-            )
-            nuevas_paradas.append(nueva_parada)
-
-        db.add_all(nuevas_paradas)
         db.commit()
         return pedido
 
 def delete_pedido_db(id_pedido):
     with get_db() as db:
+        # Delete related records in the paradas table
+        db.query(Paradas).filter(Paradas.id_pedido == id_pedido).delete()
+        
+        # Delete the pedido record
         db.query(Pedidos).filter(Pedidos.id == id_pedido).delete()
+        
         db.commit()
         return {"message": f"Pedido con ID {id_pedido} eliminado correctamente."}
-    
 # endregion
 
 # region TipoParada

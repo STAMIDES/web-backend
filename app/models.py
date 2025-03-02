@@ -29,9 +29,6 @@ class RegistroUsuario(BaseModel):
     nombre: str
     password: str
 
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
-    email: str
 
 class Clientes(BaseModel):
     id: Optional[int] = None

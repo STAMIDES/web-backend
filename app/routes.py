@@ -1,8 +1,9 @@
 from typing import List
-from fastapi import APIRouter, HTTPException, Body, Depends # type: ignore
-from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, RefreshTokenRequest,
+from fastapi import APIRouter, HTTPException, Response, Request, Depends # type: ignore
+from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes,
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario) # type: ignore
 import database as db
+
 import autenticacion.autenticacion as aut
 from autenticacion.autenticacion_bearer import JWTBearer
 from datetime import datetime
@@ -23,6 +24,13 @@ def get_usuarios(offset: int = 0, limit: int = 10, search: str = ''):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
+@usuarios_router.get("/check", response_model=dict, dependencies=[Depends(JWTBearer())])
+def check_session():
+    try:
+        return {"detail": "Logged in successfully"}
+    except Exception as e:
+        log.error(traceback.format_exc())
+
 @usuarios_router.get("/{id_usuario}", dependencies=[Depends(JWTBearer())])
 def get_usuario(id_usuario: int):
     try:
@@ -110,42 +118,75 @@ def delete_usuario(email: int):
 
 
 @usuarios_router.post("/login")
-def login(request: LoginRequest):
+def login(request: LoginRequest, response: Response):
     try:
         access_token, refresh_token = db.login(request.username, request.password)
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        # Set secure HTTP-only cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite='lax',
+            max_age=3600  # 1 hour
+        )
+        response.set_cookie(
+            key="refresh_token", 
+            value=refresh_token,
+            path='/usuarios/logout',
+            httponly=True,
+            secure=True,
+            samesite='lax',
+            max_age=6*31*24*3600  # 6 months
+        )
+        
+        return {"message": "Login successful"}
     except Exception as e:
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
-@usuarios_router.post("/refresh")
-def refresh_token(request: RefreshTokenRequest):
-        payload = aut.validate_token(request.refresh_token)
-        if payload["type"] != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
-        
-        user_email = payload.get("sub")
-        user = db.get_user_by_email(user_email)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Check if the refresh token is valid in the database
-        if not db.is_refresh_token_valid(user.id, request.refresh_token):
-            raise HTTPException(status_code=401, detail="Refresh token is not valid")
-        
-        # Generate new access token
-        new_access_token = aut.create_access_token(data={"sub": user_email, "user_id": user.id})
-        
-        return {"access_token": new_access_token, "token_type": "bearer"}
+@usuarios_router.post("/logout/refresh")
+def refresh_token(request: Request, response: Response):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    payload = aut.validate_token(refresh_token)
+    
+    user_email = payload.get("sub")
+    user = db.get_user_by_email(user_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if the refresh token is valid in the database
+    if not db.is_refresh_token_valid(user.id, refresh_token):
+        raise HTTPException(status_code=401, detail="Refresh token is not valid")
+    
+    # Generate new access token
+    new_access_token = aut.create_access_token(data={"sub": user_email, "user_id": user.id})
+    
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        secure=True,
+        samesite='lax',
+        max_age=3600  # 1 day
+    )
+    
+    return {"message": "Token refreshed successfully"}
 
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
-def logout(request: RefreshTokenRequest):
+def logout(request: Request, response: Response):
     try:
-        db.logout(request.refresh_token, request.email)
-        return {"detail": "Usuario desconectado correctamente"}
+        refresh_token = request.cookies.get("refresh_token")
+        if refresh_token:
+            db.logout(refresh_token)
+        response.delete_cookie(key="access_token")
+        response.delete_cookie(key="refresh_token", path='/usuarios/refresh')
+        return {"message": "Usuario desconectado correctamente"}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-    
 # endregion
 
 # region Clientes
