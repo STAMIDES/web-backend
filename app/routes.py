@@ -260,7 +260,7 @@ def add_cliente(cliente: Clientes):
         if not db.get_cliente_by_doc(cliente.documento):
             cliente = db.add_cliente_db(cliente)
             return {"cliente": cliente}
-        raise HTTPException(status_code=400, detail="Ya esxiste un cliente con ese documentos.")
+        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese documento.")
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -700,11 +700,11 @@ def update_chofer(id_chofer: int, activo):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@choferes_router.delete("/{documento}", dependencies=[Depends(JWTBearer())])
-def delete_chofer(documento: int):
+@choferes_router.delete("/{id_chofer}", dependencies=[Depends(JWTBearer())])
+def delete_chofer(id_chofer: int):
     try:
-        db.delete_chofer_db(documento)
-        return {"detail": f"Chofer con documento {documento} eliminado correctamente."}
+        db.delete_chofer_db(id_chofer)
+        return {"detail": f"Chofer {id_chofer} eliminado correctamente."}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")

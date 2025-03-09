@@ -674,6 +674,7 @@ class Vehiculos(Base):
     capacidad_convencional = Column(Integer, nullable=False)
     capacidad_silla_de_ruedas = Column(Integer, nullable=False)
     activo = Column(Boolean, default=True)
+    borrado = Column(Boolean, default=False)
     observaciones = Column(String)
 
     caracteristicas = relationship(
@@ -707,26 +708,26 @@ def add_vehiculo_db(vehiculo):
     
 def get_vehiculo_db(id_vehiculo):
     with get_db() as db:
-        return db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).first()
+        return db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo, Vehiculos.borrado == False).first()
 
 def get_vehiculos_db(limit: int = 100, offset: int = 0, active_only: bool = False):
     with get_db() as db:
         if active_only:
-            vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == True).offset(offset).limit(limit).all()
-            cantidad = db.query(Vehiculos).filter(Vehiculos.activo == True).count()
+            vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == True, Vehiculos.borrado == False).order_by(Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
+            cantidad = db.query(Vehiculos).filter(Vehiculos.activo == True, Vehiculos.borrado == False).count()
         else:
-            vehiculos = db.query(Vehiculos).order_by(Vehiculos.activo.desc()).offset(offset).limit(limit).all()
-            cantidad = db.query(Vehiculos).count()
+            vehiculos = db.query(Vehiculos).filter(Vehiculos.borrado == False).order_by(Vehiculos.activo.desc(), Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
+            cantidad = db.query(Vehiculos).filter(Vehiculos.borrado == False).count()
         return vehiculos, cantidad
 
 def get_vehiculo_by_matricula_db(matricula):
     with get_db() as db:
-        return db.query(Vehiculos).filter(Vehiculos.matricula == matricula).first()
+        return db.query(Vehiculos).filter(Vehiculos.matricula == matricula, Vehiculos.borrado == False).first()
 
 def get_vehiculos_by_activo_db(activo: bool, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == activo).offset(offset).limit(limit).all()
-        cantidad = db.query(Vehiculos).filter(Vehiculos.activo == activo).count()
+        vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == activo, Vehiculos.borrado == False).order_by(Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
+        cantidad = db.query(Vehiculos).filter(Vehiculos.activo == activo, Vehiculos.borrado == False).count()
         return vehiculos, cantidad
 
 def update_vehiculo_db(id_vehiculo, vehiculo):
@@ -750,7 +751,9 @@ def update_vehiculo_estado_db(id_vehiculo, activo):
     
 def delete_vehiculo_db(id_vehiculo):
     with get_db() as db:
-        db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).delete()
+        result = db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo, Vehiculos.borrado == False).update({"activo": False, "borrado": True})
+        if result == 0:
+            return {"error": f"El vehículo con ID {id_vehiculo} ya estaba eliminado o no existe."}
         db.commit()
         return {"message": f"Vehículo con ID {id_vehiculo} eliminado correctamente."}
     
@@ -800,6 +803,7 @@ class Choferes(Base):
     apellido = Column(String, nullable=False)
     telefono = Column(String)
     activo = Column(Boolean, default=True)
+    borrado = Column(Boolean, default=False)
     observaciones = Column(String)
 
 def add_chofer_db(chofer):
@@ -812,21 +816,21 @@ def add_chofer_db(chofer):
     
 def get_chofer_db(id):
     with get_db() as db:
-        return db.query(Choferes).filter(Choferes.id == id).first()
+        return db.query(Choferes).filter(Choferes.id == id, Choferes.borrado == False).first()
     
 def get_choferes_db(limit: int = 100, offset: int = 0, active_only: bool = False):
     with get_db() as db:
         if active_only:
-            choferes = db.query(Choferes).filter(Choferes.activo == True).offset(offset).limit(limit).all()
-            cantidad = db.query(Choferes).filter(Choferes.activo == True).count()
+            choferes = db.query(Choferes).filter(Choferes.activo == True, Choferes.borrado == False).order_by(Choferes.apellido.asc()).offset(offset).limit(limit).all()
+            cantidad = db.query(Choferes).filter(Choferes.activo == True, Choferes.borrado == False).count()
         else:
-            choferes = db.query(Choferes).order_by(Choferes.activo.desc()).offset(offset).limit(limit).all()
-            cantidad = db.query(Choferes).count()
+            choferes = db.query(Choferes).filter(Choferes.borrado == False).order_by(Choferes.activo.desc(), Choferes.apellido.asc()).offset(offset).limit(limit).all()
+            cantidad = db.query(Choferes).filter(Choferes.borrado == False).count()
         return choferes, cantidad
 
 def get_choferes_by_activo_db(activo, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        choferes = db.query(Choferes).filter(Choferes.activo == activo).all()
+        choferes = db.query(Choferes).filter(Choferes.activo == activo, Choferes.borrado == False).order_by(Choferes.apellido.asc()).all()
         return choferes
 
 def update_chofer_db(id, chofer):
@@ -841,11 +845,20 @@ def update_chofer_estado_db(id_chofer, activo):
         db.query(Choferes).filter(Choferes.id == id_chofer).update({"activo": activo_bool})
         db.commit()
 
-def delete_chofer_db(documento):
+def delete_chofer_db(id):
     with get_db() as db:
-        db.query(Choferes).filter(Choferes.documento == documento).delete()
+        chofer = db.query(Choferes).filter(Choferes.id == id, Choferes.borrado == False).first()
+        if not chofer:
+            return {"error": f"El chofer con ID {id} ya estaba eliminado o no existe."}
+
+        # Desasociar chofer de los vehículos que lo tengan asignado
+        db.query(Vehiculos).filter(Vehiculos.documento_chofer_habitual == chofer.documento).update({"documento_chofer_habitual": None})
+
+        # Marcar el chofer como eliminado
+        db.query(Choferes).filter(Choferes.id == id).update({"activo": False, "borrado": True})
         db.commit()
-        return {"message": f"Chofer con documento {documento} eliminado correctamente."}
+        
+        return {"message": f"Chofer con documento {chofer.documento} eliminado correctamente."}
 
 # endregion
 
@@ -859,6 +872,7 @@ class LugaresComunes(Base):
     latitud = Column(Float)
     longitud = Column(Float)
     activo = Column(Boolean, default=True)
+    borrado = Column(Boolean, default=False)
     observaciones = Column(String)
 
 def add_lugar_comun_db(deposito):
@@ -871,21 +885,21 @@ def add_lugar_comun_db(deposito):
     
 def get_lugar_comun_db(id):
     with get_db() as db:
-        return db.query(LugaresComunes).filter(LugaresComunes.id == id).first()
+        return db.query(LugaresComunes).filter(LugaresComunes.id == id, LugaresComunes.borrado == False).first()
 
 def get_lugares_comunes_db(limit: int = 100, offset: int = 0, actives_only: bool = False):
     with get_db() as db:
         if actives_only:
-            lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == True).offset(offset).limit(limit).all()
-            cantidad = db.query(LugaresComunes).filter(LugaresComunes.activo == True).count()
+            lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == True, LugaresComunes.borrado == False).order_by(LugaresComunes.nombre.asc()).offset(offset).limit(limit).all()
+            cantidad = db.query(LugaresComunes).filter(LugaresComunes.activo == True, LugaresComunes.borrado == False).count()
         else:
-            lugares_comunes = db.query(LugaresComunes).order_by(LugaresComunes.activo.desc()).offset(offset).limit(limit).all()
-            cantidad = db.query(LugaresComunes).count()
+            lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.borrado == False).order_by(LugaresComunes.activo.desc(), LugaresComunes.nombre.asc()).offset(offset).limit(limit).all()
+            cantidad = db.query(LugaresComunes).filter(LugaresComunes.borrado == False).count()
         return lugares_comunes, cantidad
 
 def get_lugares_comunes_by_activo_db(activo, limit: int = 100, offset: int = 0):
     with get_db() as db:
-        lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == activo).all()
+        lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == activo, LugaresComunes.borrado == False).order_by(LugaresComunes.nombre.asc()).all()
         return lugares_comunes
 
 def update_lugar_comun_db(id, deposito):
@@ -902,9 +916,11 @@ def update_lugar_comun_estado_db(id_lugar_comun, activo):
 
 def delete_lugar_comun_db(id):
     with get_db() as db:
-        db.query(LugaresComunes).filter(LugaresComunes.id == id).delete()
+        result = db.query(LugaresComunes).filter(LugaresComunes.id == id, LugaresComunes.borrado == False).update({"activo": False, "borrado": True})
+        if result == 0:
+            return {"error": f"El lugar común con ID {id} ya estaba eliminado o no existe."}
         db.commit()
-        return {"message": f"Depósito con ID {id} eliminado correctamente."}
+        return {"message": f"Lugar común con ID {id} eliminado correctamente."}
 
 # endregion
 
@@ -956,7 +972,6 @@ def add_planificacion_db(planificacion):
 # paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
 def get_planificacion_db(id_planificacion: int):
     with get_db() as db:
-        log.info(id_planificacion)
         planificacion = db.query(Planificaciones).options(
             joinedload(Planificaciones.turnos),
             joinedload(Planificaciones.rutas)
@@ -969,23 +984,26 @@ def get_planificacion_db(id_planificacion: int):
             joinedload(Planificaciones.creado_por)
         ).filter(Planificaciones.id == id_planificacion).first()
 
-        # Completar las visitas con sus detalles
-        for ruta in planificacion.rutas:
-            if ruta.geometria:
-                ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
-                ruta.geometria = ruta_geometria_geojson['coordinates']
-            for visita in ruta.visitas:
-                if visita.tipo_item == m.TipoItemVisita.parada:
-                    visita.item = db.query(Paradas).options(
-                        joinedload(Paradas.tipo_parada),
-                        joinedload(Paradas.pedido).joinedload(Pedidos.cliente)
-                    ).filter(Paradas.id == visita.id_item).first()
-                else:
-                    visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
+        if planificacion:
+            # Ordenar rutas por hora de inicio
+            planificacion.rutas = sorted(planificacion.rutas, key=lambda r: r.hora_inicio)
+
+            # Completar las visitas con sus detalles
+            for ruta in planificacion.rutas:
+                if ruta.geometria:
+                    ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
+                    ruta.geometria = ruta_geometria_geojson['coordinates']
+                for visita in ruta.visitas:
+                    if visita.tipo_item == m.TipoItemVisita.parada:
+                        visita.item = db.query(Paradas).options(
+                            joinedload(Paradas.tipo_parada),
+                            joinedload(Paradas.pedido).joinedload(Pedidos.cliente)
+                        ).filter(Paradas.id == visita.id_item).first()
+                    else:
+                        visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
 
         return planificacion
 
-    
 # Obtiene las planificaciones para un determinado día
 def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 0):
     with get_db() as db:
