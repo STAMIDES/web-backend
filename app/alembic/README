@@ -1,1 +1,2 @@
-Generic single-database configuration.
+alembic revision --autogenerate -m "COMMIT MESSAGE"
+alembic upgrade head

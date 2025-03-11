@@ -103,7 +103,6 @@ class Vehiculos(BaseModel):
     id: Optional[int] = None
     matricula: Optional[str] = None
     descripcion: Optional[str] = None
-    documento_chofer_habitual: Optional[int] = None
     capacidad_convencional: int = Field(..., gt=0)
     capacidad_silla_de_ruedas: int = Field(..., gt=0)
     activo: bool = True

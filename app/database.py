@@ -670,7 +670,6 @@ class Vehiculos(Base):
     id = Column(Integer, primary_key=True, index=True)
     matricula = Column(String, unique=True, nullable=False)
     descripcion = Column(String)
-    documento_chofer_habitual = Column(Integer, ForeignKey('choferes.documento'))
     capacidad_convencional = Column(Integer, nullable=False)
     capacidad_silla_de_ruedas = Column(Integer, nullable=False)
     activo = Column(Boolean, default=True)
@@ -735,7 +734,6 @@ def update_vehiculo_db(id_vehiculo, vehiculo):
         db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).update({
             'matricula': vehiculo.matricula,
             'descripcion': vehiculo.descripcion,
-            'documento_chofer_habitual': vehiculo.documento_chofer_habitual,
             'capacidad_convencional': vehiculo.capacidad_convencional,
             'capacidad_silla_de_ruedas': vehiculo.capacidad_silla_de_ruedas,
             'observaciones': vehiculo.observaciones
@@ -826,6 +824,7 @@ def get_choferes_db(limit: int = 100, offset: int = 0, active_only: bool = False
         else:
             choferes = db.query(Choferes).filter(Choferes.borrado == False).order_by(Choferes.activo.desc(), Choferes.apellido.asc()).offset(offset).limit(limit).all()
             cantidad = db.query(Choferes).filter(Choferes.borrado == False).count()
+        choferes2 = db.query(Choferes).filter(Choferes.borrado == False).all()
         return choferes, cantidad
 
 def get_choferes_by_activo_db(activo, limit: int = 100, offset: int = 0):
@@ -850,9 +849,6 @@ def delete_chofer_db(id):
         chofer = db.query(Choferes).filter(Choferes.id == id, Choferes.borrado == False).first()
         if not chofer:
             return {"error": f"El chofer con ID {id} ya estaba eliminado o no existe."}
-
-        # Desasociar chofer de los vehículos que lo tengan asignado
-        db.query(Vehiculos).filter(Vehiculos.documento_chofer_habitual == chofer.documento).update({"documento_chofer_habitual": None})
 
         # Marcar el chofer como eliminado
         db.query(Choferes).filter(Choferes.id == id).update({"activo": False, "borrado": True})

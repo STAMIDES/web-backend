@@ -41,36 +41,36 @@ def random_lat_lng_montevideo():
 def create_sample_data():
     db = SessionLocal()
 
-    # Create Users
-    users = []
-    for _ in range(10):
-        user = Usuarios(
-            email=fake.email(),
-            hashed_password=fake.sha256(),
-            nombre=fake.name(),
-            rol=random.choice(list(m.TipoUsuario))
-        )
-        db.add(user)
-        users.append(user)
+    # # Create Users
+    # users = []
+    # for _ in range(10):
+    #     user = Usuarios(
+    #         email=fake.email(),
+    #         hashed_password=fake.sha256(),
+    #         nombre=fake.name(),
+    #         rol=random.choice(list(m.TipoUsuario))
+    #     )
+    #     db.add(user)
+    #     users.append(user)
     
     # Create Refresh Tokens
-    for user in users:
-        refresh_token = RefreshToken(
-            token=fake.uuid4(),
-            user_id=user.id,
-            expires_at=datetime.now() + timedelta(days=30)
-        )
-        db.add(refresh_token)
+    # for user in users:
+    #     refresh_token = RefreshToken(
+    #         token=fake.uuid4(),
+    #         user_id=user.id,
+    #         expires_at=datetime.now() + timedelta(days=30)
+    #     )
+    #     db.add(refresh_token)
 
-    # Create Invitations
-    for _ in range(5):
-        invitation = InvitacionUsuario(
-            hash_link=fake.sha256(),
-            email=fake.email(),
-            nombre=fake.name(),
-            rol=random.choice(["admin", "user"])
-        )
-        db.add(invitation)
+    # # Create Invitations
+    # for _ in range(5):
+    #     invitation = InvitacionUsuario(
+    #         hash_link=fake.sha256(),
+    #         email=fake.email(),
+    #         nombre=fake.name(),
+    #         rol=random.choice(["admin", "user"])
+    #     )
+    #     db.add(invitation)
 
     # Create Characteristics
     characteristics = []
@@ -82,9 +82,12 @@ def create_sample_data():
     # Create Clients
     clients = []
     for _ in range(20):
+        lat, lng = random_lat_lng_montevideo()
         client = Clientes(
             documento=fake.unique.random_number(digits=8),
             nombre=fake.first_name(),
+            latitud=lat,
+            longitud=lng,
             apellido=fake.last_name(),
             direccion=fake.address(),
             telefono=fake.phone_number(),
@@ -98,7 +101,7 @@ def create_sample_data():
     tipoH = TiposParadas(
         nombre='Hospital',    
     )
-    db.add(tipoH), #'Particular', 'Mides'])
+    db.add(tipoH),
     tipoP = TiposParadas(
         nombre='Particular',
     )
@@ -156,6 +159,7 @@ def create_sample_data():
             activo=random.choice([True, False]),
             observaciones=fake.text(max_nb_chars=200)
         )
+        vehicle.caracteristicas = random.sample(characteristics, k=random.randint(1, 3))
         db.add(vehicle)
         vehicles.append(vehicle)
 
@@ -172,17 +176,14 @@ def create_sample_data():
         db.add(driver)
         drivers.append(driver)
 
-    # Assign drivers to vehicles
-    for vehicle in vehicles:
-        vehicle.documento_chofer_habitual = random.choice(drivers).documento
-
     # Create Common Places
     for _ in range(10):
+        lat, lng = random_lat_lng_montevideo()
         place = LugaresComunes(
             nombre=fake.company(),
             direccion=fake.address(),
-            latitud=float(fake.latitude()),
-            longitud=float(fake.longitude()),
+            latitud=lat,
+            longitud=lng,
             observaciones=fake.text(max_nb_chars=200)
         )
         db.add(place)
