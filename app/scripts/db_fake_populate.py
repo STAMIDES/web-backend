@@ -113,40 +113,74 @@ def create_sample_data():
     tipos = [tipoH, tipoP, tipoM]
     db.flush()
     # Create Orders
+    tipos_pedido = list(m.TipoPedido)
     for client in clients:
-        for _ in range(random.randint(1, 10)):
-            order = Pedidos(
-                cliente_documento=client.documento,
-                prioridad=random.randint(1, 5),
-                acompañante=random.choice([True, False]),
-                tipo=random.choice(list(m.TipoPedido)),
-                fecha_programado=(datetime.now() + timedelta(days=random.randint(0, 30))).date(),
-                observaciones=fake.text(max_nb_chars=200)
-            )
-            db.add(order)
-            db.flush()
-            ventana_init = fake.date_time_this_year()
-            threshold_time = datetime.strptime('19:00:00', '%H:%M:%S').time()
-
-            if ventana_init.time() > threshold_time:
-                ventana_init = ventana_init.replace(hour=18, minute=59, second=59)
-            for pos in range(random.randint(1, 5)):
-                ventana_fin = (ventana_init + timedelta(hours=1))
-                latitude, longitude = random_lat_lng_montevideo()
-                stop = Paradas(
-                    tipo = random.choice(tipos).id,
-                    id_pedido=order.id,
-                    posicion_en_pedido=pos + 1,
-                    direccion=fake.address(),
-                    latitud=latitude,
-                    longitud=longitude,
-                    ventana_horaria_inicio=ventana_init.time(),
-                    ventana_horaria_fin=ventana_fin.time(),
-                    observaciones=fake.text(max_nb_chars=200)
+        for tipo_pedido in tipos_pedido:
+            for _ in range(2):  # Each client gets 2 of each type
+                order = Pedidos(
+                    cliente_documento=client.documento,
+                    prioridad=random.randint(1, 5),
+                    acompañante=random.choice([True, False]),
+                    tipo=tipo_pedido,
+                    fecha_programado=(datetime.now() + timedelta(days=random.randint(0, 30))).date(),
+                    observaciones=tipo_pedido  # Using observaciones for type
                 )
-                ventana_init = ventana_fin
+                db.add(order)
+                db.flush()
+                
+                # Generate stops
+                if tipo_pedido in [m.TipoPedido.solo_ida, m.TipoPedido.solo_vuelta]:
+                    num_paradas = 2
+                else:  # 'ida y vuelta'
+                    num_paradas = random.randint(3, 5)
+                
+                first_lat, first_lng = random_lat_lng_montevideo()
+                ventana_init = fake.date_time_this_year()
+                threshold_time = datetime.strptime('19:00:00', '%H:%M:%S').time()
+                if ventana_init.time() > threshold_time:
+                    ventana_init = ventana_init.replace(hour=18, minute=59, second=59)
+                
+                for pos in range(num_paradas):
+                    if pos == 0 or (pos == num_paradas - 1 and tipo_pedido == m.TipoPedido.ida_y_vuelta):
+                        latitude, longitude = first_lat, first_lng
+                    else:
+                        latitude, longitude = random_lat_lng_montevideo()
 
-                db.add(stop)
+                    if tipo_pedido == m.TipoPedido.solo_ida:
+                        if pos == 0:
+                            ventana_horaria_inicio, ventana_horaria_fin = None, None
+                        else:
+                            ventana_horaria_inicio, ventana_horaria_fin = ventana_init.time(), None
+                    elif tipo_pedido == m.TipoPedido.solo_vuelta:
+                        if pos == 0:
+                            ventana_horaria_inicio, ventana_horaria_fin = ventana_init.time(), None
+                        else:
+                            ventana_horaria_inicio, ventana_horaria_fin = None, None
+                    else:  # 'ida y vuelta'
+                        if pos == 0 or pos == num_paradas - 1:
+                            ventana_horaria_inicio, ventana_horaria_fin = None, None
+                        else:
+                            if not ventana_horaria_fin: 
+                                ventana_horaria_inicio = ventana_init.time() 
+                            else:
+                                ventana_init += timedelta(minutes=random.randint(30, 90))
+                                ventana_horaria_inicio = ventana_init.time()
+                            ventana_init += timedelta(minutes=random.randint(30, 90))
+                            ventana_horaria_fin = ventana_init.time()
+                    
+                    stop = Paradas(
+                        tipo=random.choice(tipos).id,
+                        id_pedido=order.id,
+                        posicion_en_pedido=pos + 1,
+                        direccion=fake.address(),
+                        latitud=latitude,
+                        longitud=longitude,
+                        ventana_horaria_inicio=ventana_horaria_inicio,
+                        ventana_horaria_fin=ventana_horaria_fin,
+                        observaciones=fake.text(max_nb_chars=200)
+                    )
+                    db.add(stop)
+
 
     # Create Vehicles
     vehicles = []
