@@ -1064,7 +1064,7 @@ def get_planificacion_db(id_planificacion: int):
         return planificacion
 
 # Obtiene las planificaciones para un determinado día
-def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 0):
+def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
         fecha = datetime.strptime(fecha, '%Y-%m-%d')
         log.info(fecha)
@@ -1085,7 +1085,6 @@ def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 
             joinedload(Planificaciones.creado_por)
                 .load_only(Usuarios.nombre)
         ).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
-        log.info(planificaciones)
         cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
         return planificaciones, cantidad
 

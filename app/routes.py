@@ -16,7 +16,7 @@ log = logging.getLogger("routes")
 usuarios_router = APIRouter()
 
 @usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_usuarios(offset: int = 0, limit: int = 10, search: str = ''):
+def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
     try:
         usuarios, cantidad = db.get_usuarios(offset=offset, limit=limit, search=search)
         return {"usuarios": usuarios, "cantidad": cantidad}
@@ -209,7 +209,7 @@ def get_cliente_completo(id: int, completo = False):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_clientes(limit: int = 10, offset: int = 0, search: str = ''):
+def get_clientes(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         log.info("Obteniendo clientes")
         clientes, cantidad = db.get_clientes_db(limit, offset, search)
@@ -219,7 +219,7 @@ def get_clientes(limit: int = 10, offset: int = 0, search: str = ''):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("/doc/{documento}", dependencies=[Depends(JWTBearer())])
-def get_clientes_documento(documento: int, limit: int = 10, offset: int = 0):
+def get_clientes_documento(documento: int, limit: int = 100, offset: int = 0):
     try:
         clientes, cantidad = db.get_clientes_by_documento_db(documento, limit, offset)
         return {"clientes": clientes, "cantidad": cantidad}
@@ -228,7 +228,7 @@ def get_clientes_documento(documento: int, limit: int = 10, offset: int = 0):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("/nombre/{nombre}", dependencies=[Depends(JWTBearer())])
-def get_clientes_nombre(nombre: str, limit: int = 10, offset: int = 0):
+def get_clientes_nombre(nombre: str, limit: int = 100, offset: int = 0):
     try:
         clientes = db.get_clientes_by_nombre_db(nombre, limit, offset)
         return {"clientes": clientes}
@@ -237,7 +237,7 @@ def get_clientes_nombre(nombre: str, limit: int = 10, offset: int = 0):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @clientes_router.get("tipo/{tipo}", dependencies=[Depends(JWTBearer())])
-def get_clientes_tipo(tipo: str, limit: int = 10, offset: int = 0):
+def get_clientes_tipo(tipo: str, limit: int = 100, offset: int = 0):
     try:
         clientes = db.get_clientes_by_tipo_db(tipo, limit, offset)
         return {"clientes": clientes}
@@ -246,7 +246,7 @@ def get_clientes_tipo(tipo: str, limit: int = 10, offset: int = 0):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @clientes_router.get("/caracteristica/{caracteristica}", dependencies=[Depends(JWTBearer())])
-def get_clientes_caracteristica(caracteristica: str, limit: int = 10, offset: int = 0):
+def get_clientes_caracteristica(caracteristica: str, limit: int = 100, offset: int = 0):
     try:
         clientes = db.get_clientes_by_caracteristica_db(caracteristica, limit, offset)
         return {"clientes": clientes}
@@ -342,7 +342,7 @@ def delete_cliente_caracteristica(documento: int):
 caracteristicas_router = APIRouter()
 
 @caracteristicas_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_caracteristicas(limit: int = 10, offset: int = 0):
+def get_caracteristicas(limit: int = 100, offset: int = 0):
     try:
         return db.get_caracteristicas_db()
     except Exception as e:
@@ -374,7 +374,7 @@ def get_pedido(id_pedido: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_pedidos(limit: int = 10, offset: int = 0, search: str = ''):
+def get_pedidos(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         pedidos, cantidad = db.get_pedidos_db(limit, offset, search)
         return {"pedidos": pedidos, "cantidad": cantidad}
@@ -383,7 +383,7 @@ def get_pedidos(limit: int = 10, offset: int = 0, search: str = ''):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.get("/cliente/{documento}", dependencies=[Depends(JWTBearer())])
-def get_pedidos_cliente(documento: int, limit: int = 10, offset: int = 0):
+def get_pedidos_cliente(documento: int, limit: int = 100, offset: int = 0):
     try:
         pedidos = db.get_pedidos_by_cliente_db(documento, limit, offset)
         return {"pedidos": pedidos}
@@ -392,7 +392,7 @@ def get_pedidos_cliente(documento: int, limit: int = 10, offset: int = 0):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @pedidos_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
-def get_pedidos_fecha(fecha: str, limit: int = 10, offset: int = 0, search: str = ''):
+def get_pedidos_fecha(fecha: str, limit: int = 100, offset: int = 0, search: str = ''):
     try:
         pedidos, cantidad = db.get_pedidos_by_fecha_db(fecha, limit, offset, search)
         return {"pedidos": pedidos, "cantidad": cantidad}
@@ -445,7 +445,7 @@ def get_tipo_parada(id_tipo_parada: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @tipos_paradas_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_tipos_paradas(limit: int = 10, offset: int = 0):
+def get_tipos_paradas(limit: int = 100, offset: int = 0):
     try:
         tipos_paradas, cantidad = db.get_tipos_paradas_db(limit, offset)
         return tipos_paradas
@@ -536,7 +536,7 @@ def get_vehiculo(id_vehiculo: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @vehiculos_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_vehiculos(limit: int = 10, offset: int = 0, search: str = ''):
+def get_vehiculos(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         vehiculos, cantidad = db.get_vehiculos_db(limit, offset, search)
         return {"vehiculos": vehiculos, "cantidad": cantidad}
@@ -545,7 +545,7 @@ def get_vehiculos(limit: int = 10, offset: int = 0, search: str = ''):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @vehiculos_router.get("/matricula/{matricula}", dependencies=[Depends(JWTBearer())])
-def get_vehiculo_matricula(matricula: str, limit: int = 10, offset: int = 0):
+def get_vehiculo_matricula(matricula: str, limit: int = 100, offset: int = 0):
     try:
         vehiculos = db.get_vehiculo_by_matricula_db(matricula)
         return {"vehiculos": vehiculos}
@@ -554,7 +554,7 @@ def get_vehiculo_matricula(matricula: str, limit: int = 10, offset: int = 0):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @vehiculos_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
-def get_vehiculos_activos(activo: bool, limit: int = 10, offset: int = 0):
+def get_vehiculos_activos(activo: bool, limit: int = 100, offset: int = 0):
     try:
         vehiculos = db.get_vehiculos_by_activo_db(activo, limit, offset)
         return {"vehiculos": vehiculos}
@@ -657,7 +657,7 @@ def get_chofer(id: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @choferes_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_choferes(limit: int = 10, offset: int = 0, search: str = ''):
+def get_choferes(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         choferes, cantidad = db.get_choferes_db(limit, offset, search)
         return {"choferes": choferes, "cantidad": cantidad}
@@ -666,7 +666,7 @@ def get_choferes(limit: int = 10, offset: int = 0, search: str = ''):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @choferes_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
-def get_choferes_activos(activo: bool, limit: int = 10, offset: int = 0):
+def get_choferes_activos(activo: bool, limit: int = 100, offset: int = 0):
     try:
         choferes = db.get_choferes_activos_db(activo, limit, offset)
         return {"choferes": choferes}
@@ -726,7 +726,7 @@ def get_lugar_comun(id_lugar: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @lugares_comunes_router.get("/", dependencies=[Depends(JWTBearer())])
-def get_lugares_comunes(limit: int = 10, offset: int = 0, search: str = ''):
+def get_lugares_comunes(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         lugares, cantidad = db.get_lugares_comunes_db(limit, offset, search)
         return {"lugares": lugares, "cantidad": cantidad}
@@ -735,7 +735,7 @@ def get_lugares_comunes(limit: int = 10, offset: int = 0, search: str = ''):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @lugares_comunes_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
-def get_lugares_comunes_activos(activo: bool, limit: int = 10, offset: int = 0):
+def get_lugares_comunes_activos(activo: bool, limit: int = 100, offset: int = 0):
     try:
         lugares = db.get_lugares_comunes_by_activo_db(activo, limit, offset)
         return {"lugares": lugares}
@@ -795,9 +795,9 @@ def get_planificacion(id_planificacion: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
 @planificaciones_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
-def get_planificaciones_fecha(fecha:str, limit: int = 10, offset: int = 0, search: str = ''):
+def get_planificaciones_fecha(fecha:str, limit: int = 100, offset: int = 0, search: str = ''):
     try:
-        planificaciones, cantidad = db.get_planificaciones_by_fecha_db(fecha, limit, offset)
+        planificaciones, cantidad = db.get_planificaciones_by_fecha_db(fecha, limit, offset, search)
         return {"planificaciones": planificaciones, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
