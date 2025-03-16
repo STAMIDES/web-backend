@@ -1,5 +1,5 @@
 from sqlite3 import Date
-from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Time, Boolean, Enum as SQLAEnum, or_ # type: ignore
+from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Time, Boolean, Enum as SQLAEnum, or_, distinct # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
@@ -518,14 +518,52 @@ def get_pedidos_by_rango_fechas_db(fecha_inicio: DateTime, fecha_fin: DateTime, 
         return pedidos, cantidad
     
 # Obtiene los pedidos tales que su fecha de programación sea igual a la fecha dada
-def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0):
+def get_pedidos_by_fecha_db(fecha_str: str, limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
-        pedidos = db.query(Pedidos).options(
-            joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),
-            joinedload(Pedidos.paradas).joinedload(Paradas.tipo_parada)
-        ).filter(Pedidos.fecha_programado == fecha).offset(offset).limit(limit).all()
-        cantidad = db.query(Pedidos).filter(Pedidos.fecha_programado == fecha).count()
+        search_func = Pedidos.fecha_programado == fecha
+        if search:
+            log.info('Searching for %s', search)
+            search_func = search_func & (
+                or_(
+                    Clientes.nombre.ilike(f'%{search}%'),
+                    Clientes.apellido.ilike(f'%{search}%'),
+                    cast(Clientes.documento, String).ilike(f'%{search}%'),
+                    Clientes.caracteristicas.any(Caracteristicas.nombre.ilike(f'%{search}%')),
+                    Paradas.direccion.ilike(f'%{search}%'),
+                    TiposParadas.nombre.ilike(f'%{search}%')
+                )
+            )
+
+        # Realizamos los joins necesarios para que los filtros de relaciones se apliquen
+        query = db.query(Pedidos) \
+            .join(Pedidos.cliente) \
+            .outerjoin(Clientes.caracteristicas) \
+            .outerjoin(Pedidos.paradas) \
+            .outerjoin(Paradas.tipo_parada) \
+            .filter(search_func)
+
+        cantidad = query.with_entities(func.count(distinct(Pedidos.id))).scalar()
+
+        # For the main query, use a subquery approach to apply pagination correctly
+        subquery = db.query(Pedidos.id).distinct() \
+            .join(Pedidos.cliente) \
+            .outerjoin(Clientes.caracteristicas) \
+            .outerjoin(Pedidos.paradas) \
+            .outerjoin(Paradas.tipo_parada) \
+            .filter(search_func) \
+            .offset(offset) \
+            .limit(limit) \
+            .subquery()
+
+        # Now get the full pedidos with the limited IDs
+        pedidos = db.query(Pedidos) \
+            .filter(Pedidos.id.in_(subquery)) \
+            .options(
+                joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),
+                joinedload(Pedidos.paradas).joinedload(Paradas.tipo_parada)
+            ).all()
+
         return pedidos, cantidad
 
 def update_pedido_db(id_pedido, pedido):

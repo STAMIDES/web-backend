@@ -394,7 +394,7 @@ def get_pedidos_cliente(documento: int, limit: int = 10, offset: int = 0):
 @pedidos_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
 def get_pedidos_fecha(fecha: str, limit: int = 10, offset: int = 0, search: str = ''):
     try:
-        pedidos, cantidad = db.get_pedidos_by_fecha_db(fecha, limit, offset)
+        pedidos, cantidad = db.get_pedidos_by_fecha_db(fecha, limit, offset, search)
         return {"pedidos": pedidos, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
