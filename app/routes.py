@@ -18,7 +18,7 @@ usuarios_router = APIRouter()
 @usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_usuarios(offset: int = 0, limit: int = 10, search: str = ''):
     try:
-        usuarios, cantidad = db.get_usuarios(offset=offset, limit=limit)
+        usuarios, cantidad = db.get_usuarios(offset=offset, limit=limit, search=search)
         return {"usuarios": usuarios, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -538,7 +538,7 @@ def get_vehiculo(id_vehiculo: int):
 @vehiculos_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_vehiculos(limit: int = 10, offset: int = 0, search: str = ''):
     try:
-        vehiculos, cantidad = db.get_vehiculos_db(limit, offset)
+        vehiculos, cantidad = db.get_vehiculos_db(limit, offset, search)
         return {"vehiculos": vehiculos, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -659,7 +659,7 @@ def get_chofer(id: int):
 @choferes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_choferes(limit: int = 10, offset: int = 0, search: str = ''):
     try:
-        choferes, cantidad = db.get_choferes_db(limit, offset)
+        choferes, cantidad = db.get_choferes_db(limit, offset, search)
         return {"choferes": choferes, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -668,7 +668,7 @@ def get_choferes(limit: int = 10, offset: int = 0, search: str = ''):
 @choferes_router.get("/activo/{activo}", dependencies=[Depends(JWTBearer())])
 def get_choferes_activos(activo: bool, limit: int = 10, offset: int = 0):
     try:
-        choferes = db.get_choferes_by_activo_db(activo, limit, offset)
+        choferes = db.get_choferes_activos_db(activo, limit, offset)
         return {"choferes": choferes}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -728,7 +728,7 @@ def get_lugar_comun(id_lugar: int):
 @lugares_comunes_router.get("/", dependencies=[Depends(JWTBearer())])
 def get_lugares_comunes(limit: int = 10, offset: int = 0, search: str = ''):
     try:
-        lugares, cantidad = db.get_lugares_comunes_db(limit, offset)
+        lugares, cantidad = db.get_lugares_comunes_db(limit, offset, search)
         return {"lugares": lugares, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())

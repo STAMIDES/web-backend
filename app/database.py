@@ -92,9 +92,17 @@ def registrar_usuario(usuarioInv, nuevo_user):
         return usuario_obj
 
 # Obtiene los usuarios desde offset hasta offset+limit, devuelve también la cantidad total de usuarios   
-def get_usuarios(offset: int = 0, limit: int = 100):
+def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
     with get_db() as db:
-        usuarios = db.query(Usuarios).offset(offset).limit(limit).all()
+        if search:
+            search_func = or_(
+                    Usuarios.nombre.ilike(f'%{search}%'),
+                    Usuarios.email.ilike(f'%{search}%'),
+                    cast(Usuarios.rol, String).ilike(f'%{search}%')
+                )
+        else:
+            search_func = True
+        usuarios = db.query(Usuarios).filter(search_func).offset(offset).limit(limit).all()
         public_users_full = []
         for user in usuarios:
             public_users_full.append({
@@ -103,7 +111,7 @@ def get_usuarios(offset: int = 0, limit: int = 100):
                 'nombre': user.nombre,
                 'rol': user.rol
             })
-        cantidad = db.query(Usuarios).count()
+        cantidad = db.query(Usuarios).filter(search_func).count()
         return public_users_full, cantidad
 
 def get_usuario_db(id_usuario):
@@ -747,14 +755,21 @@ def get_vehiculo_db(id_vehiculo):
     with get_db() as db:
         return db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo, Vehiculos.borrado == False).first()
 
-def get_vehiculos_db(limit: int = 100, offset: int = 0, active_only: bool = False):
+def get_vehiculos_db(limit: int = 100, offset: int = 0, search = ''):
     with get_db() as db:
-        if active_only:
-            vehiculos = db.query(Vehiculos).filter(Vehiculos.activo == True, Vehiculos.borrado == False).order_by(Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
-            cantidad = db.query(Vehiculos).filter(Vehiculos.activo == True, Vehiculos.borrado == False).count()
-        else:
-            vehiculos = db.query(Vehiculos).filter(Vehiculos.borrado == False).order_by(Vehiculos.activo.desc(), Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
-            cantidad = db.query(Vehiculos).filter(Vehiculos.borrado == False).count()
+        search_func = Vehiculos.borrado == False
+        if search:
+            search_func = search_func & (
+                or_(
+                    Vehiculos.matricula.ilike(f'%{search}%'),
+                    Vehiculos.descripcion.ilike(f'%{search}%'),
+                    cast(Vehiculos.capacidad_convencional, String).ilike(f'%{search}%'),
+                    cast(Vehiculos.capacidad_silla_de_ruedas, String).ilike(f'%{search}%'),
+                    Vehiculos.observaciones.ilike(f'%{search}%')
+                )
+            )
+        vehiculos = db.query(Vehiculos).filter(search_func).order_by(Vehiculos.activo.desc(), Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
+        cantidad = db.query(Vehiculos).filter(search_func).count()
         return vehiculos, cantidad
 
 def get_vehiculo_by_matricula_db(matricula):
@@ -854,18 +869,23 @@ def get_chofer_db(id):
     with get_db() as db:
         return db.query(Choferes).filter(Choferes.id == id, Choferes.borrado == False).first()
     
-def get_choferes_db(limit: int = 100, offset: int = 0, active_only: bool = False):
+def get_choferes_db(limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
-        if active_only:
-            choferes = db.query(Choferes).filter(Choferes.activo == True, Choferes.borrado == False).order_by(Choferes.apellido.asc()).offset(offset).limit(limit).all()
-            cantidad = db.query(Choferes).filter(Choferes.activo == True, Choferes.borrado == False).count()
-        else:
-            choferes = db.query(Choferes).filter(Choferes.borrado == False).order_by(Choferes.activo.desc(), Choferes.apellido.asc()).offset(offset).limit(limit).all()
-            cantidad = db.query(Choferes).filter(Choferes.borrado == False).count()
-        choferes2 = db.query(Choferes).filter(Choferes.borrado == False).all()
+        search_func = Choferes.borrado == False
+        if search:
+            search_func = search_func & (
+                or_(
+                    Choferes.nombre.ilike(f'%{search}%'),
+                    Choferes.apellido.ilike(f'%{search}%'),
+                    cast(Choferes.documento, String).ilike(f'%{search}%'),
+                    Choferes.telefono.ilike(f'%{search}%'),
+                )
+            )
+        choferes = db.query(Choferes).filter(search_func).order_by(Choferes.activo.desc(), Choferes.apellido.asc()).offset(offset).limit(limit).all()
+        cantidad = db.query(Choferes).filter(search_func).count()
         return choferes, cantidad
 
-def get_choferes_by_activo_db(activo, limit: int = 100, offset: int = 0):
+def get_choferes_activos_db(activo, limit: int = 100, offset: int = 0):
     with get_db() as db:
         choferes = db.query(Choferes).filter(Choferes.activo == activo, Choferes.borrado == False).order_by(Choferes.apellido.asc()).all()
         return choferes
@@ -921,14 +941,19 @@ def get_lugar_comun_db(id):
     with get_db() as db:
         return db.query(LugaresComunes).filter(LugaresComunes.id == id, LugaresComunes.borrado == False).first()
 
-def get_lugares_comunes_db(limit: int = 100, offset: int = 0, actives_only: bool = False):
+def get_lugares_comunes_db(limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
-        if actives_only:
-            lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.activo == True, LugaresComunes.borrado == False).order_by(LugaresComunes.nombre.asc()).offset(offset).limit(limit).all()
-            cantidad = db.query(LugaresComunes).filter(LugaresComunes.activo == True, LugaresComunes.borrado == False).count()
-        else:
-            lugares_comunes = db.query(LugaresComunes).filter(LugaresComunes.borrado == False).order_by(LugaresComunes.activo.desc(), LugaresComunes.nombre.asc()).offset(offset).limit(limit).all()
-            cantidad = db.query(LugaresComunes).filter(LugaresComunes.borrado == False).count()
+        filter_func = LugaresComunes.borrado == False
+        if search:
+            filter_func = filter_func & (
+                or_(
+                    LugaresComunes.nombre.ilike(f'%{search}%'),
+                    LugaresComunes.direccion.ilike(f'%{search}%'),
+                    LugaresComunes.observaciones.ilike(f'%{search}%')
+                )
+            )
+        lugares_comunes = db.query(LugaresComunes).filter(filter_func).order_by(LugaresComunes.activo.desc(), LugaresComunes.nombre.asc()).offset(offset).limit(limit).all()
+        cantidad = db.query(LugaresComunes).filter(filter_func).count()
         return lugares_comunes, cantidad
 
 def get_lugares_comunes_by_activo_db(activo, limit: int = 100, offset: int = 0):
