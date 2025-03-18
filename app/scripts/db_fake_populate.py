@@ -5,7 +5,8 @@ import random
 from faker import Faker
 import sys
 import os
-
+import requests
+from shapely.geometry import Point, shape
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,18 +26,51 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
+
+## GET COORDS EN MONTEVIDEO
+
+# URL to get Montevideo boundary as GeoJSON
+OSM_BOUNDARY_URL = "https://nominatim.openstreetmap.org/search.php?q=Montevideo,Uruguay&polygon_geojson=1&format=json"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+}
+
+def get_montevideo_boundary():
+    """Fetch Montevideo's boundary polygon from OpenStreetMap"""
+    response = requests.get(OSM_BOUNDARY_URL, headers=HEADERS)
+
+    if response.status_code != 200:
+        raise ValueError(f"Failed to fetch boundary: {response.status_code} - {response.text}")
+    data = response.json()
+    # Extract GeoJSON polygon from the response
+    for item in data:
+        if 'geojson' in item:
+            return shape(item['geojson'])  # Convert to Shapely polygon
+
+    raise ValueError("Could not retrieve Montevideo's boundary")
+
+# Fetch boundary once
+montevideo_boundary = get_montevideo_boundary()
+
+def is_inside_montevideo(lat, lng):
+    """Check if a coordinate is inside Montevideo"""
+    point = Point(lng, lat)  # Shapely uses (lng, lat)
+    return montevideo_boundary.contains(point)
+
+
 def random_lat_lng_montevideo():
-    # Define the bounding box for Montevideo, Uruguay
-    min_lat = -34.927
-    max_lat = -34.797
-    min_lng = -56.256
-    max_lng = -56.053
-    
-    # Generate random latitude and longitude within the bounding box
-    lat = random.uniform(min_lat, max_lat)
-    lng = random.uniform(min_lng, max_lng)
-    
-    return lat, lng
+    """Generate random lat/lng inside Montevideo"""
+    min_lat, max_lat = -34.927, -34.797
+    min_lng, max_lng = -56.256, -56.053
+
+    while True:
+        lat = random.uniform(min_lat, max_lat)
+        lng = random.uniform(min_lng, max_lng)
+
+        if is_inside_montevideo(lat, lng):
+            return lat, lng 
+# Generate random lat/lng inside Montevideo
 
 def create_sample_data():
     db = SessionLocal()
@@ -73,11 +107,17 @@ def create_sample_data():
     #     db.add(invitation)
 
     # Create Characteristics
-    characteristics = []
-    for _ in range(5):
-        characteristic = Caracteristicas(nombre=fake.word())
-        db.add(characteristic)
-        characteristics.append(characteristic)
+    #check if characteristics already exist
+    characteristics = db.query(Caracteristicas).all()
+    if characteristics:
+        print("Characteristics already exist, skiping creation")
+    else:
+        characteristics = []
+
+        for _ in range(5):
+            characteristic = Caracteristicas(nombre=fake.word())
+            db.add(characteristic)
+            characteristics.append(characteristic)
 
     # Create Clients
     clients = []
@@ -98,20 +138,25 @@ def create_sample_data():
         db.add(client)
         clients.append(client)
 
-    tipoH = TiposParadas(
-        nombre='Hospital',    
-    )
-    db.add(tipoH),
-    tipoP = TiposParadas(
-        nombre='Particular',
-    )
-    db.add(tipoP)
-    tipoM = TiposParadas(
-        nombre='Mides',
-    )
-    db.add(tipoM)
-    tipos = [tipoH, tipoP, tipoM]
-    db.flush()
+    #check if tipos_paradas already exist
+    tipos = db.query(TiposParadas).all()
+    if tipos:
+        print("Tipos Paradas already exist, skiping creation")
+    else:
+        tipoH = TiposParadas(
+            nombre='Hospital',    
+        )
+        db.add(tipoH),
+        tipoP = TiposParadas(
+            nombre='Particular',
+        )
+        db.add(tipoP)
+        tipoM = TiposParadas(
+            nombre='Mides',
+        )
+        db.add(tipoM)
+        tipos = [tipoH, tipoP, tipoM]
+        db.flush()
     # Create Orders
     tipos_pedido = list(m.TipoPedido)
     for client in clients:

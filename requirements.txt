@@ -10,3 +10,5 @@ pyjwt
 passlib[bcrypt]
 alembic
 faker
+geopandas 
+requests
