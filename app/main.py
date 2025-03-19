@@ -26,7 +26,8 @@ logger.addHandler(file_handler)
 
 
 origins = [
-    "http://localhost:5174",  
+    "http://localhost:5174",
+    "http://localhost:5173"  
 ]
 
 app = FastAPI(debug = True)
