@@ -1,7 +1,8 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, Response, Request, Depends # type: ignore
-from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes,
-                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario) # type: ignore
+from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, ForgotPasswordRequest,
+                    VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario,
+                    ValidateResetTokenRequest, ResetPasswordRequest) # type: ignore
 import database as db
 
 import autenticacion.autenticacion as aut
@@ -155,7 +156,7 @@ def refresh_token(request: Request, response: Response):
     user_email = payload.get("sub")
     user = db.get_user_by_email(user_email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="User not found")
     
     # Check if the refresh token is valid in the database
     if not db.is_refresh_token_valid(user.id, refresh_token):
@@ -187,6 +188,76 @@ def logout(request: Request, response: Response):
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/forgot-password")
+def forgot_password(request: ForgotPasswordRequest):
+    try:
+        email = request.email
+        user = db.get_user_by_email(email)
+        if not user:
+           raise HTTPException(status_code=400, detail="Usuario no encontrado.")
+        
+        # Generate password reset token
+        token = db.generate_password_reset_token(email)
+        if not token:
+            raise HTTPException(status_code=500, detail="Error al generar el token de restablecimiento")
+        
+        # Send email with reset link
+        mailer = Mailer()
+        reset_link = f"https://mides.com/cuenta/reset-password/{token}?email={email}"
+        mailer.send_forgot_password_email(email, user.nombre or 'usuario', reset_link)
+        return { "message": "Se envio un mail con instrucciones para cambiar la contraseña"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/validate-reset-token")
+def validate_reset_token(request: ValidateResetTokenRequest):
+    try:
+        log.info(request.email)
+        token = db.get_password_reset_token(request.token, request.email)
+        if not token:
+            raise HTTPException(status_code=400, detail="Token inválido o expirado")
+        log.info('Token valido')
+        return {"valid": True}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@usuarios_router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest):
+    try:
+        # Validate token
+        token = db.get_password_reset_token(request.token, request.email)
+        if not token:
+            raise HTTPException(status_code=400, detail="Token inválido o expirado")
+        
+        # Get user by email
+        user = db.get_user_by_email(token.email)
+        if not user:
+            raise HTTPException(status_code=400, detail="Usuario no encontrado")
+        
+        # Update password
+        hashed_password = aut.get_password_hash(request.new_password)
+        user.hashed_password = hashed_password
+        
+        # Mark token as used
+        db.mark_password_reset_token_used(request.token)
+        
+        # Save changes
+        db.update_usuario_db(user.email, user)
+        
+        return {"message": "Contraseña actualizada correctamente"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
 # endregion
 
 # region Clientes

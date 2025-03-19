@@ -51,6 +51,17 @@ class ClientesCaracteristicas(BaseModel):
 class Caracteristicas(BaseModel):
     id: Optional[int] = None
     nombre: str
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ValidateResetTokenRequest(BaseModel):
+    token: str
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    email: str
+    new_password: str
 
 class TipoPedido(str, Enum):
     solo_ida = "Solo ida"

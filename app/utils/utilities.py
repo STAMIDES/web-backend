@@ -26,3 +26,28 @@ class Mailer:
                 server.sendmail(sender_email, to_email, message.as_string())
         except Exception as e:
             print(f"Error al enviar el correo: {e}")
+
+    def send_forgot_password_email(self, to_email: str, user_name: str, reset_link: str):
+        """
+        Sends a forgot password email to the user with a reset link
+        
+        Args:
+            to_email (str): The recipient's email address
+            user_name (str): The user's name (or 'usuario' if not available)
+            reset_link (str): The password reset link
+        """
+        subject = "Restablecer contraseña"
+        body = f"""Hola {user_name},
+
+Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace para crear una nueva contraseña:
+
+{reset_link}
+
+Este enlace expirará en 24 horas.
+
+Si no solicitaste este cambio, puedes ignorar este correo.
+
+Saludos,
+El equipo de MIDES"""
+
+        self.send(to_email, subject, body)

@@ -70,6 +70,16 @@ class InvitacionUsuario(Base):
     nombre = Column(String)
     rol = Column(String)
 
+class PasswordResetToken(Base):
+    __tablename__ = 'password_reset_tokens'
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, index=True, unique=True, nullable=False)
+    email = Column(String, index=True, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
 def add_usuario_db(usuario): #FIXME: REMOVER SOLO USADO PARA DEVELOPMENT, CREAR USUARIOS RAPIDAMENTE
     with get_db() as db:
         usuario.hashed_password = aut.get_password_hash(usuario.hashed_password)
@@ -126,9 +136,14 @@ def get_usuario_db(id_usuario):
     
 def update_usuario_db(email, usuario):
     with get_db() as db:
-        db.query(Usuarios).filter(Usuarios.email == email).update(usuario.dict())
-        db.commit()
-        return usuario
+        user_db = db.query(Usuarios).filter(Usuarios.email == email).first()
+        if user_db:
+            # Update individual fields
+            user_db.hashed_password = usuario.hashed_password
+            # Update any other fields you need to update
+            db.commit()
+            return user_db
+        return None
 
 def delete_usuario_db(email):
     with get_db() as db:
@@ -218,6 +233,53 @@ def get_invitation(hash_link: str):# id no requerido para el GET, pero si para e
     with get_db() as db:
         return db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == hash_link, 
                                                   InvitacionUsuario.used == False,).first()
+
+def generate_password_reset_token(email: str, expiration_hours: int = 24):
+    try:
+        with get_db() as db:
+            counter = 0
+            while counter < 10:
+                token = hashlib.sha256(f"{email}{random.random()}".encode()).hexdigest()
+                existing_token = db.query(PasswordResetToken).filter(
+                    PasswordResetToken.token == token,
+                    PasswordResetToken.used == False
+                ).first()
+                if not existing_token:
+                    break
+                counter += 1
+
+            if counter >= 10:
+                return None
+
+            new_token = PasswordResetToken(
+                token=token,
+                email=email,
+                expires_at=datetime.utcnow() + timedelta(hours=expiration_hours)
+            )
+            db.add(new_token)
+            db.commit()
+            db.refresh(new_token)
+            return token
+    except Exception as e:
+        print(e)
+        return None
+
+def get_password_reset_token(token: str, email: str):
+    with get_db() as db:
+        return db.query(PasswordResetToken).filter(
+            PasswordResetToken.token == token,
+            PasswordResetToken.email == email,
+            PasswordResetToken.used == False,
+            PasswordResetToken.expires_at > datetime.utcnow()
+        ).first()
+
+def mark_password_reset_token_used(token: str):
+    with get_db() as db:
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.token == token
+        ).update({"used": True})
+        db.commit()
+
 # endregion
 
 # region Clientes
