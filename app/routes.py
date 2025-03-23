@@ -123,6 +123,10 @@ def login(request: LoginRequest, response: Response):
     try:
         access_token, refresh_token = db.login(request.username, request.password)
         # Set secure HTTP-only cookies
+
+        if not access_token or not refresh_token:
+            raise HTTPException(status_code=400, detail="Usuario o contraseña incorrectas")
+         
         response.set_cookie(
             key="access_token",
             value=access_token,
@@ -142,6 +146,8 @@ def login(request: LoginRequest, response: Response):
         )
         
         return {"message": "Login successful"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
@@ -175,7 +181,7 @@ def refresh_token(request: Request, response: Response):
     )
     
     return {"message": "Token refreshed successfully"}
-
+    
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
 def logout(request: Request, response: Response):
     try:
