@@ -839,7 +839,9 @@ def get_vehiculos_db(limit: int = 100, offset: int = 0, search = ''):
                     Vehiculos.observaciones.ilike(f'%{search}%')
                 )
             )
-        vehiculos = db.query(Vehiculos).filter(search_func).order_by(Vehiculos.activo.desc(), Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
+        vehiculos = db.query(Vehiculos).options(
+            joinedload(Vehiculos.caracteristicas)
+            ).filter(search_func).order_by(Vehiculos.activo.desc(), Vehiculos.matricula.asc()).offset(offset).limit(limit).all()
         cantidad = db.query(Vehiculos).filter(search_func).count()
         return vehiculos, cantidad
 
