@@ -557,6 +557,15 @@ def get_pedido_db(id_pedido):
         ).filter(Pedidos.id == id_pedido).first()
         return pedido
 
+def get_pedidos_by_id_db(id_pedidos):
+    with get_db() as db:
+        pedidos = db.query(Pedidos) \
+            .join(Pedidos.cliente) \
+            .outerjoin(Clientes.caracteristicas) \
+            .outerjoin(Pedidos.paradas) \
+            .outerjoin(Paradas.tipo_parada).filter(Pedidos.id.in_(id_pedidos)).all()
+        return pedidos
+
 # Obtiene los pedidos desde offset hasta offset+limit
 def get_pedidos_db(limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
@@ -1058,12 +1067,21 @@ class Planificaciones(Base):
 
     turnos = relationship('Turnos', back_populates='planificacion')
     rutas = relationship('Rutas', back_populates='planificacion', order_by='Rutas.hora_inicio')
+    pedidos_no_atendidos = relationship('PedidosNoAtendidos', back_populates='planificacion')
+
+class PedidosNoAtendidos(Base):
+    __tablename__ = 'pedidos_no_atendidos'
+    
+    id = Column(Integer, primary_key=True, index=True)
+    id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
+    id_pedido = Column(Integer, ForeignKey('pedidos.id'))
+    
+    planificacion = relationship('Planificaciones', back_populates='pedidos_no_atendidos')
+    pedido = relationship('Pedidos')
 
 # Crea un planificación y dos turnos asociados
-def crear_planificacion(user_id, planificacion, turnos, rutas):
+def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos=None):
     with get_db() as db:
-        log.info(planificacion)
-        log.info(user_id)
         planificacion.usuario_id = user_id
         planificacion_obj = add_planificacion_db(planificacion)
 
@@ -1078,7 +1096,14 @@ def crear_planificacion(user_id, planificacion, turnos, rutas):
             for v in r.visitas:
                 v.id_ruta = rutas_obj.id
                 visita_obj = add_visita_db(v)
-
+        if pedidos_no_atendidos:
+            for pedido_id in pedidos_no_atendidos:
+                pedido_no_atendido = PedidosNoAtendidos(
+                    id_planificacion=planificacion_obj.id,
+                    id_pedido=pedido_id
+                )
+                db.add(pedido_no_atendido)
+            db.commit()
         return get_planificacion_db(planificacion_obj.id)
 
 def add_planificacion_db(planificacion):
@@ -1102,7 +1127,14 @@ def get_planificacion_db(id_planificacion: int):
                 .joinedload(RutasTurnos.chofer),
             joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.visitas),
-            joinedload(Planificaciones.creado_por)
+            joinedload(Planificaciones.creado_por),
+            joinedload(Planificaciones.pedidos_no_atendidos)
+                .joinedload(PedidosNoAtendidos.pedido)
+                .joinedload(Pedidos.cliente),  # Fix joinload to joinedload
+            joinedload(Planificaciones.pedidos_no_atendidos)
+                .joinedload(PedidosNoAtendidos.pedido)
+                .joinedload(Pedidos.paradas)
+                .joinedload(Paradas.tipo_parada)
         ).filter(Planificaciones.id == id_planificacion).first()
 
         if planificacion:
@@ -1122,7 +1154,12 @@ def get_planificacion_db(id_planificacion: int):
                         ).filter(Paradas.id == visita.id_item).first()
                     else:
                         visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
-
+            if planificacion.pedidos_no_atendidos:
+                planificacion_dict = {
+                    **planificacion.__dict__,
+                    "pedidos_no_atendidos": [pna.pedido for pna in planificacion.pedidos_no_atendidos]
+                }
+                return planificacion_dict
         return planificacion
 
 # Obtiene las planificaciones para un determinado día

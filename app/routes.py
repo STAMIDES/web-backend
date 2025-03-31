@@ -884,12 +884,13 @@ def get_planificaciones_fecha(fecha:str, limit: int = 100, offset: int = 0, sear
 def add_planificacion(
             planificacion: Planificaciones, 
             turnos: List[Turnos], 
-            rutas: List[Rutas], 
+            rutas: List[Rutas],
+            pedidos_no_atendidos: List[int] = None,
             token_payload: dict = Depends(JWTBearer())  # Move token_payload inside the function parameters
         ):
     try:
         user_id: int = token_payload.get("user_id")
-        nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas)
+        nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos)
         return {"planificacion": nueva_planificacion}
     except Exception as e:
         log.error(traceback.format_exc())
