@@ -824,7 +824,9 @@ def add_vehiculo_db(vehiculo):
     
 def get_vehiculo_db(id_vehiculo):
     with get_db() as db:
-        return db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo, Vehiculos.borrado == False).first()
+        return db.query(Vehiculos).options(
+            joinedload(Vehiculos.caracteristicas)
+        ).filter(Vehiculos.id == id_vehiculo, Vehiculos.borrado == False).first()
 
 def get_vehiculos_db(limit: int = 100, offset: int = 0, search = ''):
     with get_db() as db:
@@ -857,6 +859,11 @@ def get_vehiculos_by_activo_db(activo: bool, limit: int = 100, offset: int = 0):
 
 def update_vehiculo_db(id_vehiculo, vehiculo):
     with get_db() as db:
+        # Extract characteristics from the vehicle data
+        vehiculo_obj = vehiculo.dict()
+        caracteristicas = vehiculo_obj.pop('caracteristicas', [])
+        
+        # Update vehicle in the database
         db.query(Vehiculos).filter(Vehiculos.id == id_vehiculo).update({
             'matricula': vehiculo.matricula,
             'descripcion': vehiculo.descripcion,
@@ -865,7 +872,41 @@ def update_vehiculo_db(id_vehiculo, vehiculo):
             'observaciones': vehiculo.observaciones
         })
         db.commit()
-        return vehiculo
+        
+        # Handle characteristics
+        if caracteristicas:
+            existing_caracteristicas = db.query(VehiculosCaracteristicas).filter(
+                VehiculosCaracteristicas.id_vehiculo == id_vehiculo
+            ).all()
+            existing_ids = {c.id_caracteristica for c in existing_caracteristicas}
+            new_ids = set(caracteristicas)
+            
+            to_add = new_ids - existing_ids
+            to_remove = existing_ids - new_ids
+            
+            # Add new characteristics
+            for caracteristica in to_add:
+                caracteristica_obj = VehiculosCaracteristicas(
+                    id_vehiculo=id_vehiculo, 
+                    id_caracteristica=caracteristica
+                )
+                db.add(caracteristica_obj)
+            
+            # Remove existing characteristics that are not in the new set
+            for caracteristica in to_remove:
+                db.query(VehiculosCaracteristicas).filter(
+                    VehiculosCaracteristicas.id_vehiculo == id_vehiculo, 
+                    VehiculosCaracteristicas.id_caracteristica == caracteristica
+                ).delete()
+        
+        db.commit()
+        
+        # Return the updated vehicle with characteristics loaded
+        updated_vehiculo = db.query(Vehiculos).options(
+            joinedload(Vehiculos.caracteristicas)
+        ).filter(Vehiculos.id == id_vehiculo).first()
+        
+        return updated_vehiculo
 
 def update_vehiculo_estado_db(id_vehiculo, activo):
     with get_db() as db:
