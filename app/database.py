@@ -801,7 +801,7 @@ class Vehiculos(Base):
 
     __table_args__ = (
         CheckConstraint('capacidad_convencional > 0', name='capacidad_convencional_check'),
-        CheckConstraint('capacidad_silla_de_ruedas > 0', name='capacidad_silla_de_ruedas_check'),
+        CheckConstraint('capacidad_silla_de_ruedas >= 0', name='capacidad_silla_de_ruedas_check'),
     )
 
 # Agrega un vehículo y sus características asociadas
