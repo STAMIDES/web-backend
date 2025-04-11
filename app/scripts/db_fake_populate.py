@@ -1,10 +1,11 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 import random
 from faker import Faker
 import sys
 import os
+import argparse
 import requests
 from shapely.geometry import Point, shape
 # Add the parent directory to sys.path
@@ -108,16 +109,16 @@ def create_sample_data():
 
     # Create Characteristics
     #check if characteristics already exist
-    characteristics = db.query(Caracteristicas).all()
-    if characteristics:
+    characteristics_db = db.query(Caracteristicas).all()
+    if characteristics_db:
         print("Characteristics already exist, skiping creation")
     else:
-        characteristics = []
-
-        for _ in range(5):
-            characteristic = Caracteristicas(nombre=fake.word())
+        characteristics = ["rampa_electrica", "silla_de_ruedas", "ciego", "sordo", "mudo", "torpe", "traste", "testarudo"]
+        for c in characteristics:
+            characteristic = Caracteristicas(nombre=c)
             db.add(characteristic)
-            characteristics.append(characteristic)
+        db.commit()  # commit to ensure they are available for next query
+        characteristics_db = db.query(Caracteristicas).all()
 
     # Create Clients
     clients = []
@@ -134,7 +135,7 @@ def create_sample_data():
             email=fake.email(),
             observaciones=fake.text(max_nb_chars=200)
         )
-        client.caracteristicas = random.sample(characteristics, k=random.randint(1, 3))
+        client.caracteristicas = random.sample(characteristics_db, k=random.randint(1, 3))
         db.add(client)
         clients.append(client)
 
@@ -238,7 +239,7 @@ def create_sample_data():
             activo=random.choice([True, False]),
             observaciones=fake.text(max_nb_chars=200)
         )
-        vehicle.caracteristicas = random.sample(characteristics, k=random.randint(1, 3))
+        vehicle.caracteristicas = random.sample(characteristics_db, k=random.randint(1, 3))
         db.add(vehicle)
         vehicles.append(vehicle)
 
@@ -330,6 +331,26 @@ def create_sample_data():
 
     db.close()
 
+def run_sql_script(session, sql_file_path):
+    with open(sql_file_path, 'r') as f:
+        sql_script = f.read()
+    session.execute(text(sql_script))  # wrap in sqlalchemy.text()
+    session.commit()
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--clean_db", action="store_true", help="Clean the DB before adding sample data")
+    args = parser.parse_args()
+
+    db = SessionLocal()
+
+    if args.clean_db:
+        print("Cleaning database...")
+        run_sql_script(db, "./delete_all_db.sql")
+        print("Database cleaned.")
+    else:
+        print("Database not cleaned, adding more data..., run it with --clean_db to clean the database")
+
+    db.close()
     create_sample_data()
     print("Sample data has been generated successfully.")
