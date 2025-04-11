@@ -1173,7 +1173,7 @@ def get_planificacion_db(id_planificacion: int):
             joinedload(Planificaciones.creado_por),
             joinedload(Planificaciones.pedidos_no_atendidos)
                 .joinedload(PedidosNoAtendidos.pedido)
-                .joinedload(Pedidos.cliente),  # Fix joinload to joinedload
+                .joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),  # Fix joinload to joinedload
             joinedload(Planificaciones.pedidos_no_atendidos)
                 .joinedload(PedidosNoAtendidos.pedido)
                 .joinedload(Pedidos.paradas)
@@ -1193,7 +1193,7 @@ def get_planificacion_db(id_planificacion: int):
                     if visita.tipo_item == m.TipoItemVisita.parada:
                         visita.item = db.query(Paradas).options(
                             joinedload(Paradas.tipo_parada),
-                            joinedload(Paradas.pedido).joinedload(Pedidos.cliente)
+                            joinedload(Paradas.pedido).joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas)
                         ).filter(Paradas.id == visita.id_item).first()
                     else:
                         visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
