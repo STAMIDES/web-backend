@@ -1238,9 +1238,26 @@ def update_planificacion_db(id_planificacion, planificacion):
     
 def delete_planificacion_db(id_planificacion):
     with get_db() as db:
-        db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).delete()
+        # Delete related Visitas
+        db.query(Visitas).filter(
+            Visitas.id_ruta.in_(
+                db.query(Rutas.id).filter(Rutas.id_planificacion == id_planificacion)
+            )
+        ).delete(synchronize_session=False)
+
+        # Delete related Rutas
+        db.query(Rutas).filter(Rutas.id_planificacion == id_planificacion).delete(synchronize_session=False)
+
+        # Delete related Turnos
+        db.query(Turnos).filter(Turnos.id_planificacion == id_planificacion).delete(synchronize_session=False)
+
+        db.query(PedidosNoAtendidos).filter(PedidosNoAtendidos.id_planificacion == id_planificacion).delete(synchronize_session=False)
+
+        # Delete the Planificacion
+        db.query(Planificaciones).filter(Planificaciones.id == id_planificacion).delete(synchronize_session=False)
+
         db.commit()
-        return {"message": f"Planificación con ID {id_planificacion} eliminada correctamente."}
+        return {"message": f"Planificación con ID {id_planificacion} y sus dependencias eliminadas correctamente."}
     
 # endregion
 
