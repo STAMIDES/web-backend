@@ -217,7 +217,7 @@ def create_sample_data():
                     stop = Paradas(
                         tipo=random.choice(tipos).id,
                         id_pedido=order.id,
-                        posicion_en_pedido=pos + 1,
+                        posicion_en_pedido=pos,
                         direccion=fake.address(),
                         latitud=latitude,
                         longitud=longitude,

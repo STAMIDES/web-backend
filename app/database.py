@@ -1183,7 +1183,7 @@ def get_planificacion_db(id_planificacion: int):
         if planificacion:
             # Ordenar rutas por hora de inicio
             planificacion.rutas = sorted(planificacion.rutas, key=lambda r: r.hora_inicio)
-
+            destinos_de_pedidos = {}
             # Completar las visitas con sus detalles
             for ruta in planificacion.rutas:
                 if ruta.geometria:
@@ -1191,10 +1191,21 @@ def get_planificacion_db(id_planificacion: int):
                     ruta.geometria = ruta_geometria_geojson['coordinates']
                 for visita in ruta.visitas:
                     if visita.tipo_item == m.TipoItemVisita.parada:
-                        visita.item = db.query(Paradas).options(
+                        parada = db.query(Paradas).options(
                             joinedload(Paradas.tipo_parada),
                             joinedload(Paradas.pedido).joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas)
                         ).filter(Paradas.id == visita.id_item).first()
+                        
+                        if parada.id_pedido not in destinos_de_pedidos:
+                            # Maxima posición del pedido
+                            max_pos = db.query(func.max(Paradas.posicion_en_pedido)).filter(
+                                Paradas.id_pedido == parada.id_pedido
+                            ).scalar()
+                            destinos_de_pedidos[parada.id_pedido] = max_pos
+
+                        # Le agregás el atributo dinámico
+                        parada.es_destino = (parada.posicion_en_pedido == destinos_de_pedidos[parada.id_pedido])
+                        visita.item = parada
                     else:
                         visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
             if planificacion.pedidos_no_atendidos:
