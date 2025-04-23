@@ -1118,6 +1118,7 @@ class PedidosNoAtendidos(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
     id_pedido = Column(Integer, ForeignKey('pedidos.id'))
+    agregada_a_la_fuerza = Column(datetime, nullable=True)
     
     planificacion = relationship('Planificaciones', back_populates='pedidos_no_atendidos')
     pedido = relationship('Pedidos')
@@ -1157,6 +1158,9 @@ def add_planificacion_db(planificacion):
         db.refresh(planificacion_obj)
         return planificacion_obj
 
+def forzar_pedido_en_planificacion(id_planificacion, pedido_id, asignaciones):
+    with get_db() as db:
+                  
 # Obtiene una planificación con sus turnos y rutas asociados, y las visitas asociadas a las rutas,
 # paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
 def get_planificacion_db(id_planificacion: int):

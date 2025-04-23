@@ -190,6 +190,15 @@ class Planificaciones(BaseModel):
     fecha_creacion: datetime = None
     observaciones: Optional[str] = None
 
+class TurnoAsignacion(BaseModel):
+    id_ruta: int
+    posicion_en_pedido: int
+    posicion_en_planificacion: int
+
+class ForzarPedidoRequest(BaseModel):
+    pedido_id: int
+    asignaciones: List[TurnoAsignacion]
+    
 class RutasTurnos(BaseModel):
     id: Optional[int] = None
     id_ruta: int

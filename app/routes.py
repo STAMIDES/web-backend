@@ -1,6 +1,6 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, Response, Request, Depends # type: ignore
-from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, ForgotPasswordRequest,
+from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, ForgotPasswordRequest, ForzarPedidoRequest,
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario,
                     ValidateResetTokenRequest, ResetPasswordRequest) # type: ignore
 import database as db
@@ -892,6 +892,15 @@ def add_planificacion(
         user_id: int = token_payload.get("user_id")
         nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos)
         return {"planificacion": nueva_planificacion}
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@planificaciones_router.post("/{id_planificacion}/forzar-pedido-en-planificacion")
+def forzar_pedido_en_planificacion(id_planificacion: int, request: ForzarPedidoRequest):
+    try:
+        db.forzar_pedido_en_planificacion(id_planificacion, request.pedido_id, request.asignaciones)
+        return {"message": "Pedido forzado correctamente."}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
