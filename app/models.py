@@ -171,6 +171,7 @@ class Rutas(BaseModel):
     id: Optional[int] = None
     id_planificacion: int = None
     id_vehiculo: int
+    id_chofer: int
     hora_inicio: time
     hora_fin: time
     geometria: List[List[float]]
@@ -189,11 +190,4 @@ class Planificaciones(BaseModel):
     fecha: datetime
     fecha_creacion: datetime = None
     observaciones: Optional[str] = None
-
-class RutasTurnos(BaseModel):
-    id: Optional[int] = None
-    id_ruta: int
-    id_turno: int
-    id_chofer: int
-
 

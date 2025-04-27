@@ -1166,8 +1166,7 @@ def get_planificacion_db(id_planificacion: int):
             joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.vehiculo),
             joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.rutas_turnos)
-                .joinedload(RutasTurnos.chofer),
+                .joinedload(Rutas.chofer),
             joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.visitas),
             joinedload(Planificaciones.creado_por),
@@ -1227,8 +1226,7 @@ def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 
                 .load_only(Rutas.id, Rutas.hora_fin, Rutas.hora_inicio)
                 .joinedload(Rutas.vehiculo),
             joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.rutas_turnos)
-                .joinedload(RutasTurnos.chofer),
+                .joinedload(Rutas.chofer),
             joinedload(Planificaciones.rutas)
                 .joinedload(Rutas.visitas)
                 .joinedload(Visitas.parada),
@@ -1319,15 +1317,16 @@ class Rutas(Base):
     __tablename__ = 'rutas'
 
     id = Column(Integer, primary_key=True, index=True)
-    id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
-    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id'))
+    id_planificacion = Column(Integer, ForeignKey('planificaciones.id'), nullable=False)
+    id_vehiculo = Column(Integer, ForeignKey('vehiculos.id'), nullable=False)
+    id_chofer = Column(Integer, ForeignKey('choferes.id'), nullable=False)
     hora_inicio = Column(Time, nullable=False)
     hora_fin = Column(Time, nullable=False)
     geometria = Column(Geometry(geometry_type='LINESTRING', srid=4326))
     observaciones = Column(String)
     planificacion = relationship('Planificaciones', back_populates='rutas')
     vehiculo = relationship('Vehiculos')
-    rutas_turnos = relationship('RutasTurnos')
+    chofer = relationship('Choferes')
     visitas = relationship('Visitas', back_populates='ruta', order_by='Visitas.hora_llegada')
 
 def add_ruta_db(ruta):
@@ -1336,6 +1335,7 @@ def add_ruta_db(ruta):
         ruta_obj = Rutas(
             id_planificacion=ruta.id_planificacion,
             id_vehiculo=ruta.id_vehiculo,
+            id_chofer=ruta.id_chofer,
             hora_inicio=ruta.hora_inicio,
             hora_fin=ruta.hora_fin,
             geometria=geometria_wkt,  
@@ -1366,47 +1366,6 @@ def delete_ruta_db(id_ruta):
         db.query(Rutas).filter(Rutas.id_ruta == id_ruta).delete()
         db.commit()
         return {"message": f"Ruta con ID {id_ruta} eliminada correctamente."}
-    
-# endregion
-
-# region RutasTurnos
-class RutasTurnos(Base):
-    __tablename__ = 'rutas_turnos'
-
-    id = Column(Integer, primary_key=True, index=True)
-    id_ruta = Column(Integer, ForeignKey('rutas.id'))
-    id_turno = Column(Integer, ForeignKey('turnos.id'))
-    id_chofer = Column(Integer, ForeignKey('choferes.id'))
-    chofer = relationship('Choferes')
-
-def add_ruta_turno_db(ruta_turno):
-    with get_db() as db:
-        ruta_turno_obj = RutasTurnos(**ruta_turno.dict())
-        db.add(ruta_turno_obj)
-        db.commit()
-        db.refresh(ruta_turno_obj)
-        return ruta_turno_obj
-    
-def get_ruta_turno_db(id_ruta, id_turno):
-    with get_db() as db:
-        return db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta, RutasTurnos.id_turno == id_turno).first()
-    
-def get_ruta_turnos_by_ruta_db(id_ruta):
-    with get_db() as db:
-        ruta_turnos = db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta).all()
-        return ruta_turnos
-    
-def update_ruta_turno_db(id_ruta, id_turno, ruta_turno):
-    with get_db() as db:
-        db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta, RutasTurnos.id_turno == id_turno).update(ruta_turno.dict())
-        db.commit()
-        return ruta_turno
-    
-def delete_ruta_turno_db(id_ruta, id_turno):
-    with get_db() as db:
-        db.query(RutasTurnos).filter(RutasTurnos.id_ruta == id_ruta, RutasTurnos.id_turno == id_turno).delete()
-        db.commit()
-        return {"message": f"Ruta-Turno con ID {id_ruta}-{id_turno} eliminada correctamente."}
     
 # endregion
 
