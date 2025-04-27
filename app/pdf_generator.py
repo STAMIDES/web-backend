@@ -41,7 +41,7 @@ def generate_planificacion_pdf(planificacion_data):
         
         # Route Header Info
         vehiculo = ruta.vehiculo
-        chofer_info = ruta.rutas_turnos[0].chofer if ruta.rutas_turnos else None # Assuming one chofer per route for simplicity
+        chofer_info = ruta.chofer if ruta.chofer else None # Assuming one chofer per route for simplicity
         
         header_data = [
             [Paragraph("<b>Vehículo:</b>", styles['Normal']), Paragraph(f"{vehiculo.matricula} ({vehiculo.descripcion})" if vehiculo else 'N/A', styles['Normal'])],

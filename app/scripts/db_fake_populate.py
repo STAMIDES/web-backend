@@ -8,7 +8,7 @@ import os
 import argparse
 import requests
 import time
-from shapely.geometry import Point, shape
+from shapely.geometry import Point, shape, Polygon
 import json
 import pickle
 # Add the parent directory to sys.path
@@ -40,8 +40,9 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
 
-# File path to save/load the boundary data
+# File paths for boundary data
 BOUNDARY_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "montevideo_boundary.pickle")
+BOUNDARY_CACHE_FILE2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "montevideo_boundary.json")
 
 def fetch_montevideo_boundary():
     """Fetch Montevideo's boundary polygon from OpenStreetMap"""
@@ -76,8 +77,39 @@ def get_montevideo_boundary():
     else:
         return fetch_montevideo_boundary()
 
-# Fetch boundary once
-montevideo_boundary = get_montevideo_boundary()
+def get_montevideo_boundary2():
+    """Get Montevideo boundary from the JSON format file"""
+    print("Loading Montevideo boundary from JSON file...")
+    try:
+        with open(BOUNDARY_CACHE_FILE2, 'r') as f:
+            data = json.load(f)
+        
+        # Extract coordinates from the bbox nodes
+        coordinates = []
+        for node in data.get('bbox', []):
+            if 'lat' in node and 'lon' in node:
+                coordinates.append((node.get('lon'), node.get('lat')))
+            else:   
+                print(f"Node {node} does not have 'lat' and 'lon' keys")
+        
+        # Create a polygon from the coordinates
+        if coordinates:
+            # Ensure the polygon is closed (first point equals last point)
+            if coordinates[0] != coordinates[-1] and len(coordinates) > 2:
+                coordinates.append(coordinates[0])
+            
+            boundary = Polygon(coordinates)
+            return boundary
+        else:
+            raise ValueError("No coordinates found in the JSON file")
+    except Exception as e:
+        print(f"Error loading boundary from JSON file: {e}")
+        # Fall back to original method if available
+        # return fetch_montevideo_boundary()
+        raise
+
+# Use the new function to get the boundary
+montevideo_boundary = get_montevideo_boundary2()
 
 def is_inside_montevideo(lat, lng):
     """Check if a coordinate is inside Montevideo"""
@@ -96,6 +128,8 @@ def random_lat_lng_montevideo():
 
         if is_inside_montevideo(lat, lng):
             return lat, lng 
+        else:
+            print(f"Generated point ({lat}, {lng}) is outside Montevideo. Retrying...")
 # Generate random lat/lng inside Montevideo
 
 def create_sample_data():
