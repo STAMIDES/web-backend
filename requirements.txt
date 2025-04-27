@@ -12,3 +12,4 @@ alembic
 faker
 geopandas 
 requests
+reportlab

@@ -1,9 +1,12 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, Response, Request, Depends # type: ignore
+from fastapi.responses import StreamingResponse # type: ignore
+import io
 from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehiculos, LugaresComunes, Choferes, ForgotPasswordRequest,
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario,
                     ValidateResetTokenRequest, ResetPasswordRequest) # type: ignore
 import database as db
+from pdf_generator import generate_planificacion_pdf # Import the PDF generator function
 
 import autenticacion.autenticacion as aut
 from autenticacion.autenticacion_bearer import JWTBearer
@@ -527,7 +530,7 @@ def get_tipos_paradas(limit: int = 100, offset: int = 0):
         tipos_paradas, cantidad = db.get_tipos_paradas_db(limit, offset)
         return tipos_paradas
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @tipos_paradas_router.post("/", dependencies=[Depends(JWTBearer())])
 def add_tipo_parada(tipo_parada: str):
@@ -913,6 +916,35 @@ def delete_planificacion(id_planificacion: int):
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+    
+
+@planificaciones_router.get("/{id_planificacion}/download", dependencies=[Depends(JWTBearer())])
+def download_planificacion_pdf(id_planificacion: int):
+    try:
+        planificacion_data = db.get_planificacion_db(id_planificacion)
+        if not planificacion_data:
+            raise HTTPException(status_code=404, detail="Planificación no encontrada.")
+
+        # Generate the PDF
+        pdf_buffer = generate_planificacion_pdf(planificacion_data)
+        
+        # Prepare filename
+        fecha_str = planificacion_data['fecha'].strftime('%Y%m%d') if isinstance(planificacion_data, dict) else planificacion_data.fecha.strftime('%Y%m%d')
+        filename = f"planificacion_{id_planificacion}_{fecha_str}.pdf"
+
+        # Return the PDF as a streaming response
+        return StreamingResponse(
+            pdf_buffer, 
+            media_type='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+
+    except HTTPException as e:
+        log.error(f"HTTP Exception downloading PDF for planification {id_planificacion}: {e.detail}")
+        raise e
+    except Exception as e:
+        log.error(f"Error generating or downloading PDF for planification {id_planificacion}: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Error al generar el PDF de la planificación.")
     
 # endregion
 
