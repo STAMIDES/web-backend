@@ -7,11 +7,14 @@ import sys
 import os
 import argparse
 import requests
+import time
 from shapely.geometry import Point, shape
+import json
+import pickle
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import Base, Usuarios, RefreshToken, InvitacionUsuario, Clientes, Caracteristicas, Pedidos, Paradas, TiposParadas,Vehiculos, Choferes, LugaresComunes, Planificaciones, Turnos, Rutas, RutasTurnos, Visitas
+from database import Base, Usuarios, RefreshToken, InvitacionUsuario, Clientes, Caracteristicas, Pedidos, Paradas, TiposParadas,Vehiculos, Choferes, LugaresComunes, Planificaciones, Turnos, Rutas, Visitas
 
 import models as m
 
@@ -37,8 +40,12 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
 
-def get_montevideo_boundary():
+# File path to save/load the boundary data
+BOUNDARY_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "montevideo_boundary.pickle")
+
+def fetch_montevideo_boundary():
     """Fetch Montevideo's boundary polygon from OpenStreetMap"""
+    print("Fetching Montevideo boundary from OpenStreetMap...")
     response = requests.get(OSM_BOUNDARY_URL, headers=HEADERS)
 
     if response.status_code != 200:
@@ -47,9 +54,27 @@ def get_montevideo_boundary():
     # Extract GeoJSON polygon from the response
     for item in data:
         if 'geojson' in item:
-            return shape(item['geojson'])  # Convert to Shapely polygon
+            boundary = shape(item['geojson'])  # Convert to Shapely polygon
+            # Save to file
+            with open(BOUNDARY_CACHE_FILE, 'wb') as f:
+                pickle.dump(boundary, f)
+            return boundary
 
     raise ValueError("Could not retrieve Montevideo's boundary")
+
+def get_montevideo_boundary():
+    """Get Montevideo boundary, loading from file if available or fetching from API if not"""
+    if os.path.exists(BOUNDARY_CACHE_FILE):
+        print("Loading Montevideo boundary from cache file...")
+        try:
+            with open(BOUNDARY_CACHE_FILE, 'rb') as f:
+                return pickle.load(f)
+        except Exception as e:
+            print(f"Error loading boundary from file: {e}")
+            # If there's an error loading, fetch from API
+            return fetch_montevideo_boundary()
+    else:
+        return fetch_montevideo_boundary()
 
 # Fetch boundary once
 montevideo_boundary = get_montevideo_boundary()
@@ -270,66 +295,6 @@ def create_sample_data():
     db.commit()
     db.close
     return
-    # Create Planifications
-    planifications = []
-    for _ in range(5):
-        planification = Planificaciones(
-            nombre=fake.catch_phrase(),
-            fecha=fake.date_this_year(before_today=False, after_today=True),
-            fecha_creacion=fake.date_time_this_year(before_now=True, after_now=False),
-            observaciones=fake.text(max_nb_chars=200)
-        )
-        db.add(planification)
-        db.flush()
-        planifications.append(planification)
-
-        # Create Turns for each Planification
-        for _ in range(random.randint(1, 3)):
-            turn = Turnos(
-                id_planificacion=planification.id,
-                descripcion=fake.sentence(),
-                hora_inicio=fake.time(),
-                hora_fin=fake.time()
-            )
-            db.add(turn)
-        db.commit()
-        db.close
-        return
-        # Create Routes for each Planification
-        for _ in range(random.randint(1, 5)):
-            route = Rutas(
-                id_planificacion=planification.id,
-                id_vehiculo=random.choice(vehicles).id,
-                hora_inicio=fake.time(),
-                hora_fin=fake.time(),
-                geometria="LINESTRING(0 0, 1 1, 2 2)",  # Simplified geometry
-                observaciones=fake.text(max_nb_chars=200)
-            )
-            db.add(route)
-            db.flush()
-            # Create Route-Turn associations
-            route_turn = RutasTurnos(
-                id_ruta=route.id,
-                id_turno=turn.id,
-                id_chofer=random.choice(drivers).id
-            )
-            db.add(route_turn)
-
-            # Create Visits for each Route
-            for _ in range(random.randint(1, 5)):
-                visit = Visitas(
-                    id_ruta=route.id,
-                    id_item=random.randint(1, 100),  # Simplified, should be a valid id
-                    tipo_item=random.choice(list(m.TipoItemVisita)),
-                    estado=random.choice(list(m.EstadoVisita)),
-                    hora_llegada=fake.time_object(),
-                    hora_salida=fake.time_object(),
-                    observaciones=fake.text(max_nb_chars=200)
-                )
-                db.add(visit)
-    db.commit()
-
-    db.close()
 
 def run_sql_script(session, sql_file_path):
     with open(sql_file_path, 'r') as f:
