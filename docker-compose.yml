@@ -34,7 +34,7 @@ services:
       - POSTGRES_HOST=db
       - SENDER_EMAIL=${SENDER_EMAIL}
       - SENDER_PASSWORD=${SENDER_PASSWORD}
-      - SENDER_APP_PASSWORD=${APP_PASSWORD}
+      - SENDER_APP_PASSWORD=${SENDER_APP_PASSWORD}
     networks:
       - backend-network
     volumes:
