@@ -13,3 +13,4 @@ faker
 geopandas 
 requests
 reportlab
+matplotlib

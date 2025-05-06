@@ -6,7 +6,7 @@ from models import (Pedidos, Paradas, Clientes, ClientesCaracteristicas, Vehicul
                     VehiculosCaracteristicas, Planificaciones, Turnos, Rutas, Visitas, Usuarios, LoginRequest, InvitacionUsuario, RegistroUsuario,
                     ValidateResetTokenRequest, ResetPasswordRequest) # type: ignore
 import database as db
-from pdf_generator import generate_planificacion_pdf # Import the PDF generator function
+from utils import generate_planificacion_pdf, generate_estadisticas_pdf 
 
 import autenticacion.autenticacion as aut
 from autenticacion.autenticacion_bearer import JWTBearer
@@ -863,6 +863,38 @@ def delete_lugar_comun(id_lugar: int):
 # region Planificaciones
 planificaciones_router = APIRouter()
 
+    
+@planificaciones_router.get("/informe_estadistico", dependencies=[Depends(JWTBearer())])
+def download_planificacion_pdf(start_date: str, end_date: str):
+    try:
+        
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+        planificaciones, cantidad = db.get_planificaciones_by_rango_db(fecha_start=start_date, fecha_end=end_date)
+        if not planificaciones:
+            raise HTTPException(status_code=404, detail="Planificaciónes no encontradas.")
+
+        # Generate the PDF
+        pdf_buffer = generate_estadisticas_pdf(planificaciones, start_date, end_date)
+        
+        # Prepare filename
+        filename = f"informe_estadistico_{start_date}_{end_date}.pdf"
+
+        # Return the PDF as a streaming response
+        return StreamingResponse(
+            pdf_buffer, 
+            media_type='application/pdf',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+
+    except HTTPException as e:
+        log.error(f"HTTP Exception downloading PDF for planifications {start_date} - {end_date}: {e.detail}")
+        raise e
+    except Exception as e:
+        log.error(f"Error generating or downloading PDF for planifications {start_date} - {end_date}: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Error al generar el PDF de la planificación.")
+
 @planificaciones_router.get("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
 def get_planificacion(id_planificacion: int):
     try:
@@ -877,7 +909,7 @@ def get_planificacion(id_planificacion: int):
 @planificaciones_router.get("/fecha/{fecha}", dependencies=[Depends(JWTBearer())])
 def get_planificaciones_fecha(fecha:str, limit: int = 100, offset: int = 0, search: str = ''):
     try:
-        planificaciones, cantidad = db.get_planificaciones_by_fecha_db(fecha, limit, offset, search)
+        planificaciones, cantidad = db.get_planificaciones_by_dia_db(fecha, limit, offset, search)
         return {"planificaciones": planificaciones, "cantidad": cantidad}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -926,7 +958,7 @@ def delete_planificacion(id_planificacion: int):
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 
-@planificaciones_router.get("/{id_planificacion}/download", dependencies=[Depends(JWTBearer())])
+@planificaciones_router.get("/{id_planificacion}/descargar", dependencies=[Depends(JWTBearer())])
 def download_planificacion_pdf(id_planificacion: int):
     try:
         planificacion_data = db.get_planificacion_db(id_planificacion)
@@ -953,7 +985,6 @@ def download_planificacion_pdf(id_planificacion: int):
     except Exception as e:
         log.error(f"Error generating or downloading PDF for planification {id_planificacion}: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Error al generar el PDF de la planificación.")
-    
 # endregion
 
 # region Turnos

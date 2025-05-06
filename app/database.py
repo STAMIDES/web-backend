@@ -1247,34 +1247,52 @@ def get_planificacion_db(id_planificacion: int):
             planificacion.__dict__["fmt_fecha_creacion"] = planificacion.fmt_fecha_creacion
         return planificacion
 
-# Obtiene las planificaciones para un determinado día
-def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 0, search: str = ''):
+# Internal helper function
+def _get_planificaciones(db, filter_val, offset, limit, search=None):
+    planificaciones = db.query(Planificaciones).options(
+        joinedload(Planificaciones.turnos),
+        joinedload(Planificaciones.rutas)
+            .load_only(Rutas.id, Rutas.hora_fin, Rutas.hora_inicio)
+            .joinedload(Rutas.vehiculo),
+        joinedload(Planificaciones.rutas)
+            .joinedload(Rutas.chofer),
+        joinedload(Planificaciones.rutas)
+            .joinedload(Rutas.visitas)
+            .joinedload(Visitas.parada)
+            .joinedload(Paradas.tipo_parada),
+        joinedload(Planificaciones.rutas)
+            .joinedload(Rutas.visitas)
+            .joinedload(Visitas.lugar_comun),
+        joinedload(Planificaciones.creado_por)
+            .load_only(Usuarios.nombre),
+        joinedload(Planificaciones.pedidos_no_atendidos)
+                .joinedload(PedidosNoAtendidos.pedido)
+    ).filter(filter_val).offset(offset).limit(limit).all()
+
+    for plan in planificaciones:
+        plan.__dict__["fmt_fecha"] = plan.fmt_fecha
+        plan.__dict__["fmt_fecha_creacion"] = plan.fmt_fecha_creacion
+
+    return planificaciones
+
+def get_planificaciones_by_dia_db(fecha: str, limit: int = 100, offset: int = 0, search: str = ''):
     with get_db() as db:
-        fecha = datetime.strptime(fecha, '%Y-%m-%d')
-        log.info(fecha)
-        planificaciones = db.query(Planificaciones).options(
-            joinedload(Planificaciones.turnos),
-            joinedload(Planificaciones.rutas)
-                .load_only(Rutas.id, Rutas.hora_fin, Rutas.hora_inicio)
-                .joinedload(Rutas.vehiculo),
-            joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.chofer),
-            joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.visitas)
-                .joinedload(Visitas.parada),
-            joinedload(Planificaciones.rutas)
-                .joinedload(Rutas.visitas)  
-                .joinedload(Visitas.lugar_comun),
-            joinedload(Planificaciones.creado_por)
-                .load_only(Usuarios.nombre)
-        ).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
+        fecha_dt = datetime.strptime(fecha, '%Y-%m-%d')
+        filter_val = Planificaciones.fecha == fecha_dt
+
+        planificaciones = _get_planificaciones(db, filter_val, offset, limit, search)
+        cantidad = db.query(Planificaciones).filter(filter_val).count()
+
+        return planificaciones, cantidad
+
+def get_planificaciones_by_rango_db(fecha_start: datetime, fecha_end: datetime, limit: int = 100, offset: int = 0):
+    with get_db() as db:
         
-        # Add formatted dates to each planificación
-        for plan in planificaciones:
-            plan.__dict__["fmt_fecha"] = plan.fmt_fecha
-            plan.__dict__["fmt_fecha_creacion"] = plan.fmt_fecha_creacion
-            
-        cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
+        filter_val = Planificaciones.fecha.between(fecha_start, fecha_end)
+
+        planificaciones = _get_planificaciones(db, filter_val, offset, limit)
+        cantidad = db.query(Planificaciones).filter(filter_val).count()
+
         return planificaciones, cantidad
 
 def update_planificacion_db(id_planificacion, planificacion):
