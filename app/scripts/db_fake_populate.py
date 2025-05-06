@@ -109,7 +109,7 @@ def get_montevideo_boundary2():
         raise
 
 # Use the new function to get the boundary
-montevideo_boundary = get_montevideo_boundary2()
+montevideo_boundary = get_montevideo_boundary()
 
 def is_inside_montevideo(lat, lng):
     """Check if a coordinate is inside Montevideo"""

@@ -907,6 +907,14 @@ def update_planificacion(id_planificacion: int, planificacion: Planificaciones):
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
+
+@planificaciones_router.put("/estado/{id_planificacion}", dependencies=[Depends(JWTBearer())])
+def update_planificaciones_router(id_planificacion: int, definitiva):
+    try:
+        db.update_planificacion_estado_db(id_planificacion, definitiva)
+    except Exception as e:
+        log.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
 @planificaciones_router.delete("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
 def delete_planificacion(id_planificacion: int):

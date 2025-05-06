@@ -190,4 +190,6 @@ class Planificaciones(BaseModel):
     fecha: datetime
     fecha_creacion: datetime = None
     observaciones: Optional[str] = None
+    definitiva: Optional[bool] = False
+
 

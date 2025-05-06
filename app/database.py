@@ -1106,6 +1106,7 @@ class Planificaciones(Base):
     creado_por = relationship('Usuarios')
     fecha = Column(DateTime, nullable=False)
     fecha_creacion = Column(DateTime, nullable=False, default=datetime.now())
+    definitiva = Column(Boolean, nullable=False, default=True)
     observaciones = Column(String)
 
     turnos = relationship('Turnos', back_populates='planificacion')
@@ -1151,6 +1152,19 @@ def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendi
 
 def add_planificacion_db(planificacion):
     with get_db() as db:
+        log.info('Creando planificación: %s', planificacion)
+        # Verificar si la planificación ya existe
+        existing_planificacion = db.query(Planificaciones).filter(
+            Planificaciones.fecha == planificacion.fecha,
+        ).first()
+        if existing_planificacion: # si ya existe, entonces el usuario debe elegir para ese dia cual sera la definitiva asi que se marcan ambas como falsas
+            planificacion.definitiva = False
+            if existing_planificacion.definitiva:
+                db.query(Planificaciones).filter(Planificaciones.id == existing_planificacion.id).update({"definitiva": False})
+                db.commit()
+        else:
+            planificacion.definitiva = True
+        # Crear la planificación
         planificacion_obj = Planificaciones(**planificacion.dict())
         db.add(planificacion_obj)
         db.commit()
@@ -1244,6 +1258,12 @@ def update_planificacion_db(id_planificacion, planificacion):
         db.query(Planificaciones).filter(Planificaciones.id_planificacion == id_planificacion).update(planificacion.dict())
         db.commit()
         return planificacion
+
+def update_planificacion_estado_db(id_planificacion, activo):
+    with get_db() as db:
+        activo_bool = activo.lower() in ['true', '1', 't', 'y', 'yes']
+        db.query(Planificaciones).filter(Planificaciones.id == id_planificacion).update({"definitiva": activo_bool})
+        db.commit()
     
 def delete_planificacion_db(id_planificacion):
     with get_db() as db:
