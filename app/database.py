@@ -1112,6 +1112,18 @@ class Planificaciones(Base):
     turnos = relationship('Turnos', back_populates='planificacion')
     rutas = relationship('Rutas', back_populates='planificacion', order_by='Rutas.hora_inicio')
     pedidos_no_atendidos = relationship('PedidosNoAtendidos', back_populates='planificacion')
+    
+    @property
+    def fmt_fecha(self):
+        if self.fecha:
+            return self.fecha.strftime("%d/%m/%Y")
+        return None
+        
+    @property
+    def fmt_fecha_creacion(self):
+        if self.fecha_creacion:
+            return self.fecha_creacion.strftime("%d/%m/%Y %H:%M")
+        return None
 
 class PedidosNoAtendidos(Base):
     __tablename__ = 'pedidos_no_atendidos'
@@ -1186,7 +1198,7 @@ def get_planificacion_db(id_planificacion: int):
             joinedload(Planificaciones.creado_por),
             joinedload(Planificaciones.pedidos_no_atendidos)
                 .joinedload(PedidosNoAtendidos.pedido)
-                .joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),  # Fix joinload to joinedload
+                .joinedload(Pedidos.cliente).joinedload(Clientes.caracteristicas),
             joinedload(Planificaciones.pedidos_no_atendidos)
                 .joinedload(PedidosNoAtendidos.pedido)
                 .joinedload(Pedidos.paradas)
@@ -1224,9 +1236,15 @@ def get_planificacion_db(id_planificacion: int):
             if planificacion.pedidos_no_atendidos:
                 planificacion_dict = {
                     **planificacion.__dict__,
+                    "fmt_fecha": planificacion.fmt_fecha,
+                    "fmt_fecha_creacion": planificacion.fmt_fecha_creacion,
                     "pedidos_no_atendidos": [pna.pedido for pna in planificacion.pedidos_no_atendidos]
                 }
                 return planificacion_dict
+                
+            # Add formatted dates to regular results
+            planificacion.__dict__["fmt_fecha"] = planificacion.fmt_fecha
+            planificacion.__dict__["fmt_fecha_creacion"] = planificacion.fmt_fecha_creacion
         return planificacion
 
 # Obtiene las planificaciones para un determinado día
@@ -1250,6 +1268,12 @@ def get_planificaciones_by_fecha_db(fecha: str, limit: int = 100, offset: int = 
             joinedload(Planificaciones.creado_por)
                 .load_only(Usuarios.nombre)
         ).filter(Planificaciones.fecha == fecha).offset(offset).limit(limit).all()
+        
+        # Add formatted dates to each planificación
+        for plan in planificaciones:
+            plan.__dict__["fmt_fecha"] = plan.fmt_fecha
+            plan.__dict__["fmt_fecha_creacion"] = plan.fmt_fecha_creacion
+            
         cantidad = db.query(Planificaciones).filter(Planificaciones.fecha == fecha).count()
         return planificaciones, cantidad
 
