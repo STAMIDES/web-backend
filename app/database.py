@@ -1285,15 +1285,83 @@ def get_planificaciones_by_dia_db(fecha: str, limit: int = 100, offset: int = 0,
 
         return planificaciones, cantidad
 
-def get_planificaciones_by_rango_db(fecha_start: datetime, fecha_end: datetime, limit: int = 100, offset: int = 0):
+def get_planificaciones_by_rango_db(fecha_start: datetime, fecha_end: datetime, limit: int = 100, offset: int = 0, definitivas: bool = None):
     with get_db() as db:
         
         filter_val = Planificaciones.fecha.between(fecha_start, fecha_end)
+        
+        # Add filter for definitivas if specified
+        if definitivas is not None:
+            filter_val = filter_val & (Planificaciones.definitiva == definitivas)
 
         planificaciones = _get_planificaciones(db, filter_val, offset, limit)
         cantidad = db.query(Planificaciones).filter(filter_val).count()
 
         return planificaciones, cantidad
+
+def validar_planificaciones_definitivas(fecha_start: datetime, fecha_end: datetime):
+    """
+    Valida que para cada día en el rango de fechas haya una única planificación definitiva.
+    
+    Returns:
+        dict: Un diccionario con el resultado de la validación:
+            - valid (bool): True si la validación es exitosa, False en caso contrario.
+            - message (str): Mensaje descriptivo del resultado.
+            - days_without_planification (list): Lista de fechas sin planificación (sólo informativo).
+            - days_without_definitive (list): Lista de fechas sin planificación definitiva.
+            - days_with_multiple_definitives (list): Lista de fechas con múltiples planificaciones definitivas.
+    """
+    with get_db() as db:
+        result = {
+            "valid": True,
+            "message": "",
+            "days_without_planification": [],
+            "days_without_definitive": [],
+            "days_with_multiple_definitives": []
+        }
+        
+        current_date = fecha_start
+        while current_date <= fecha_end:
+            # Contar planificaciones definitivas para este día
+            definitives_count = db.query(func.count(Planificaciones.id)).filter(
+                Planificaciones.fecha == current_date,
+                Planificaciones.definitiva == True
+            ).scalar()
+            
+            # Verificar si hay planificaciones para este día
+            has_any_planification = db.query(Planificaciones).filter(
+                Planificaciones.fecha == current_date
+            ).first() is not None
+            
+            if not has_any_planification:
+                result["days_without_planification"].append(current_date.strftime('%Y-%m-%d'))
+            elif definitives_count == 0:
+                result["days_without_definitive"].append(current_date.strftime('%Y-%m-%d'))
+                result["valid"] = False
+            elif definitives_count > 1:
+                result["days_with_multiple_definitives"].append(current_date.strftime('%Y-%m-%d'))
+                result["valid"] = False
+                
+            current_date += timedelta(days=1)
+        
+        # Construir mensaje de error si es necesario
+        if not result["valid"]:
+            result["message"] = '''No se pudo validar la planificación definitiva. Para generar un informe, es necesario identificar claramente cuál fue la planificación realizada en cada uno de los días seleccionados.
+
+                Esto implica que debes marcar una única planificación como *definitiva* para cada día en que exista más de una opción.
+
+                Por favor, revisa el listado y corrige las siguientes situaciones: \n
+                '''
+            error_msg = []
+            if result["days_without_definitive"]:
+                error_msg.append(f"- Días sin planificación definitiva seleccionada: {', '.join(result['days_without_definitive'])}")
+            if result["days_with_multiple_definitives"]:
+                error_msg.append(f"- Días con múltiples planificaciones marcadas como definitivas: {', '.join(result['days_with_multiple_definitives'])}")
+            result["message"] += "\n".join(error_msg)
+            raise HTTPException(status_code=400, detail=result["message"])
+
+        return True
+        
 
 def update_planificacion_db(id_planificacion, planificacion):
     with get_db() as db:

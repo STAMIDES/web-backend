@@ -870,7 +870,11 @@ def download_planificacion_pdf(start_date: str, end_date: str):
         
         start_date = datetime.strptime(start_date, '%Y-%m-%d')
         end_date = datetime.strptime(end_date, '%Y-%m-%d')
-
+        if start_date > end_date:
+            raise HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor que la fecha de fin.")
+        
+        db.validar_planificaciones_definitivas(start_date, end_date)  # Tira error 400 en caso de fallar
+        
         planificaciones, cantidad = db.get_planificaciones_by_rango_db(fecha_start=start_date, fecha_end=end_date)
         if not planificaciones:
             raise HTTPException(status_code=404, detail="Planificaciónes no encontradas.")
