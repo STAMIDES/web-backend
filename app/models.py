@@ -4,10 +4,6 @@ from shapely.geometry import LineString # type: ignore
 from datetime import datetime, time
 from enum import Enum
 
-class TipoUsuario(str, Enum):
-    operador = "operador"
-    chofer = "chofer"
-
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -17,13 +13,11 @@ class Usuarios(BaseModel):
     email: str
     hashed_password: str
     nombre: Optional[str] = None
-    rol: TipoUsuario
     token: Optional[str] = None
 
 class InvitacionUsuario(BaseModel):
     nombre: str
     email: str
-    rol: TipoUsuario
 
 class RegistroUsuario(BaseModel):
     nombre: str

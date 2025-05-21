@@ -16,12 +16,22 @@ import random
 import models as m
 import logging
 log = logging.getLogger(__name__)
+import os
 
 from sqlalchemy import CheckConstraint # type: ignore
 
 import autenticacion.autenticacion as aut
 
 SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
+
+dominio_frontend=os.getenv('DOMINIO_FRONTEND')
+
+INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
+INVITATION_BODY_TEMPLATE = f""" Hola {{nombre_usuario}}, 
+Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
+ingresa aqui {dominio_frontend}/cuenta/registro/{{hash_link}} para generar una contraseña y completar tu registro."""
+
+
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -45,7 +55,6 @@ class Usuarios(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     nombre = Column(String)
-    rol = Column(SQLAEnum(m.TipoUsuario), nullable=False)
     token = Column(String)
     refresh_tokens = relationship("RefreshToken", back_populates="user")
 
@@ -68,7 +77,6 @@ class InvitacionUsuario(Base):
     email = Column(String, index=True, unique=True, nullable=False)
     used = Column(Boolean, default=False)
     nombre = Column(String)
-    rol = Column(String)
 
 class PasswordResetToken(Base):
     __tablename__ = 'password_reset_tokens'
@@ -92,8 +100,8 @@ def add_usuario_db(usuario): #FIXME: REMOVER SOLO USADO PARA DEVELOPMENT, CREAR 
 def registrar_usuario(usuarioInv, nuevo_user):
     with get_db() as db:
         hashed_password = aut.get_password_hash(nuevo_user.password)
-        usuario_obj = Usuarios(rol = usuarioInv.rol, email=usuarioInv.email, #Se usa rol y email de la invitación
-                               nombre=nuevo_user.nombre, hashed_password=hashed_password) # el nuevo usuario puede tener un nombre distinto al de la invitación
+        usuario_obj = Usuarios(email=usuarioInv.email,
+                               nombre=nuevo_user.nombre, hashed_password=hashed_password)
         db.add(usuario_obj)
         db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == usuarioInv.hash_link,
                                           InvitacionUsuario.used==False ).update({"used": True})
@@ -108,7 +116,6 @@ def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
             search_func = or_(
                     Usuarios.nombre.ilike(f'%{search}%'),
                     Usuarios.email.ilike(f'%{search}%'),
-                    cast(Usuarios.rol, String).ilike(f'%{search}%')
                 )
         else:
             search_func = True
@@ -119,7 +126,6 @@ def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
                 'id': user.id,
                 'email': user.email,
                 'nombre': user.nombre,
-                'rol': user.rol
             })
         cantidad = db.query(Usuarios).filter(search_func).count()
         return public_users_full, cantidad
@@ -131,7 +137,6 @@ def get_usuario_db(id_usuario):
             'id': usuario.id,
             'email': usuario.email,
             'nombre': usuario.nombre,
-            'rol': usuario.rol
         }
     
 def update_usuario_db(email, usuario):
@@ -192,11 +197,8 @@ def is_refresh_token_valid(user_id: int, refresh_token: str):
             RefreshToken.is_revoked == False
         ).first()
         return token is not None
+    
 
-INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
-INVITATION_BODY_TEMPLATE = """ Hola {nombre_usuario}, 
-Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
-ingresa aqui https://mides.com/account/{hash_link} para generar una contraseña y completar tu registro."""
 
 def generate_invitation(usuario_invite: InvitacionUsuario):
     try:
@@ -219,7 +221,6 @@ def generate_invitation(usuario_invite: InvitacionUsuario):
                 hash_link=hash_link,
                 email=usuario_invite.email,
                 nombre=usuario_invite.nombre,
-                rol=usuario_invite.rol
             )
             db.add(new_invitation)
             db.commit()

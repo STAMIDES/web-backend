@@ -142,7 +142,6 @@ def create_sample_data():
     #         email=fake.email(),
     #         hashed_password=fake.sha256(),
     #         nombre=fake.name(),
-    #         rol=random.choice(list(m.TipoUsuario))
     #     )
     #     db.add(user)
     #     users.append(user)
@@ -162,7 +161,6 @@ def create_sample_data():
     #         hash_link=fake.sha256(),
     #         email=fake.email(),
     #         nombre=fake.name(),
-    #         rol=random.choice(["admin", "user"])
     #     )
     #     db.add(invitation)
 
