@@ -1249,8 +1249,47 @@ def get_planificacion_db(id_planificacion: int):
         return planificacion
 
 # Internal helper function
-def _get_planificaciones(db, filter_val, offset, limit, search=None):
-    planificaciones = db.query(Planificaciones).options(
+def _get_planificaciones(db, filter_val, offset, limit, search=None, get_cantidad=False):
+    query = db.query(Planificaciones)
+    
+    # Join necessary tables for search functionality
+    query = query.join(Usuarios, Usuarios.id == Planificaciones.usuario_id)
+    
+    # If search parameter is provided, add search filters
+    if search:
+        search_term = f"%{search}%"
+        search_filter = or_(
+            Usuarios.nombre.ilike(search_term), 
+            cast(Planificaciones.id, String).ilike(search_term), 
+        )
+        
+        # Additional joins for searching related entities
+        query = query.outerjoin(Rutas, Rutas.id_planificacion == Planificaciones.id)
+        query = query.outerjoin(Vehiculos, Vehiculos.id == Rutas.id_vehiculo)
+        query = query.outerjoin(Choferes, Choferes.id == Rutas.id_chofer)
+        
+        # Add more search conditions
+        search_filter = or_(
+            search_filter,
+            Vehiculos.matricula.ilike(search_term),  # Vehicle registration
+            Vehiculos.descripcion.ilike(search_term),  # Vehicle description
+            Choferes.nombre.ilike(search_term),  # Driver name
+            Choferes.apellido.ilike(search_term)  # Driver last name
+        )
+        
+        # Apply the search filter
+        filter_val = filter_val & search_filter
+    
+    # Create a base query with all necessary filters
+    base_query = query.filter(filter_val)
+    
+    # Get count if needed - using the same query structure with distinct to avoid duplicates
+    cantidad = None
+    if get_cantidad:
+        cantidad = base_query.with_entities(func.count(distinct(Planificaciones.id))).scalar()
+    
+    # Apply options and get results
+    planificaciones = base_query.options(
         joinedload(Planificaciones.turnos),
         joinedload(Planificaciones.rutas)
             .load_only(Rutas.id, Rutas.hora_fin, Rutas.hora_inicio)
@@ -1268,12 +1307,14 @@ def _get_planificaciones(db, filter_val, offset, limit, search=None):
             .load_only(Usuarios.nombre),
         joinedload(Planificaciones.pedidos_no_atendidos)
                 .joinedload(PedidosNoAtendidos.pedido)
-    ).filter(filter_val).offset(offset).limit(limit).all()
+    ).offset(offset).limit(limit).all()
 
     for plan in planificaciones:
         plan.__dict__["fmt_fecha"] = plan.fmt_fecha
         plan.__dict__["fmt_fecha_creacion"] = plan.fmt_fecha_creacion
 
+    if get_cantidad:
+        return planificaciones, cantidad
     return planificaciones
 
 def get_planificaciones_by_dia_db(fecha: str, limit: int = 100, offset: int = 0, search: str = ''):
@@ -1281,8 +1322,7 @@ def get_planificaciones_by_dia_db(fecha: str, limit: int = 100, offset: int = 0,
         fecha_dt = datetime.strptime(fecha, '%Y-%m-%d')
         filter_val = Planificaciones.fecha == fecha_dt
 
-        planificaciones = _get_planificaciones(db, filter_val, offset, limit, search)
-        cantidad = db.query(Planificaciones).filter(filter_val).count()
+        planificaciones, cantidad = _get_planificaciones(db, filter_val, offset, limit, search, get_cantidad=True)
 
         return planificaciones, cantidad
 
@@ -1295,8 +1335,7 @@ def get_planificaciones_by_rango_db(fecha_start: datetime, fecha_end: datetime, 
         if definitivas is not None:
             filter_val = filter_val & (Planificaciones.definitiva == definitivas)
 
-        planificaciones = _get_planificaciones(db, filter_val, offset, limit)
-        cantidad = db.query(Planificaciones).filter(filter_val).count()
+        planificaciones, cantidad = _get_planificaciones(db, filter_val, offset, limit, get_cantidad=True)
 
         return planificaciones, cantidad
 
