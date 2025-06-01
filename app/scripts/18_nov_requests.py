@@ -28,77 +28,16 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# URL to get Montevideo boundary as GeoJSON
-OSM_BOUNDARY_URL = "https://nominatim.openstreetmap.org/search.php?q=Montevideo,Uruguay&polygon_geojson=1&format=json"
-
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
 
-# File paths for boundary data
-BOUNDARY_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "montevideo_boundary.pickle")
-
-def fetch_montevideo_boundary():
-    """Fetch Montevideo's boundary polygon from OpenStreetMap"""
-    print("Fetching Montevideo boundary from OpenStreetMap...")
-    response = requests.get(OSM_BOUNDARY_URL, headers=HEADERS)
-
-    if response.status_code != 200:
-        raise ValueError(f"Failed to fetch boundary: {response.status_code} - {response.text}")
-    data = response.json()
-    # Extract GeoJSON polygon from the response
-    for item in data:
-        if 'geojson' in item:
-            boundary = shape(item['geojson'])  # Convert to Shapely polygon
-            # Save to file
-            with open(BOUNDARY_CACHE_FILE, 'wb') as f:
-                pickle.dump(boundary, f)
-            return boundary
-
-    raise ValueError("Could not retrieve Montevideo's boundary")
-
-def get_montevideo_boundary():
-    """Get Montevideo boundary, loading from file if available or fetching from API if not"""
-    if os.path.exists(BOUNDARY_CACHE_FILE):
-        print("Loading Montevideo boundary from cache file...")
-        try:
-            with open(BOUNDARY_CACHE_FILE, 'rb') as f:
-                return pickle.load(f)
-        except Exception as e:
-            print(f"Error loading boundary from file: {e}")
-            # If there's an error loading, fetch from API
-            return fetch_montevideo_boundary()
-    else:
-        return fetch_montevideo_boundary()
-
-montevideo_boundary = get_montevideo_boundary()
-
-def is_inside_montevideo(lat, lng):
-    """Check if a coordinate is inside Montevideo"""
-    point = Point(lng, lat)  # Shapely uses (lng, lat)
-    return montevideo_boundary.contains(point)
-
-
-def random_lat_lng_montevideo():
-    """Generate random lat/lng inside Montevideo"""
-    min_lat, max_lat = -34.927, -34.797
-    min_lng, max_lng = -56.256, -56.053
-
-    while True:
-        lat = random.uniform(min_lat, max_lat)
-        lng = random.uniform(min_lng, max_lng)
-
-        if is_inside_montevideo(lat, lng):
-            return lat, lng 
-        else:
-            print(f"Generated point ({lat}, {lng}) is outside Montevideo. Retrying...")
-
 
 NAME_ALIAS_LIST = [
     {"name": "Alejandro",                 "alias": "Persona_01", "direction": None},
-    {"name": "Sandra Zapata",             "alias": "Persona_02", "direction": "CENTRO ARTIGAS"},
-    {"name": "Sandra Da Cruz",            "alias": "Persona_03", "direction": "CENTRO ARTIGAS"},
-    {"name": "Graciela Alegre",           "alias": "Persona_04", "direction": "CENTRO ARTIGAS"},
+    {"name": "Sandra Zapata",             "alias": "Persona_02", "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738)},
+    {"name": "Sandra Da Cruz",            "alias": "Persona_03", "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738)},
+    {"name": "Graciela Alegre",           "alias": "Persona_04", "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738)},
     {"name": "Nelson Pereira",            "alias": "Persona_05", "direction": "ETNA 5958"},
     {"name": "José Enrique Dos Santos",   "alias": "Persona_06", "direction": "ALBANIA 3680"},
     {"name": "Martín González",           "alias": "Persona_07", "direction": "SECCO ILLA 2818"},
@@ -112,7 +51,7 @@ NAME_ALIAS_LIST = [
     {"name": "Pablo Chavat",              "alias": "Persona_15", "direction": "BUSTAMANTE Y GUERRA 2666 AP 1"},
     {"name": "Ari Castillo",              "alias": "Persona_16", "direction": "A. DUFORT Y ALVAREZ 3217 AP 2"},
     {"name": "José Perovich",             "alias": "Persona_17", "direction": "FRAGUOSO DE RIVERA 1447 AP 2"},
-    {"name": "Miguel Almeida",            "alias": "Persona_18", "direction": "CENTRO ARTIGAS"},
+    {"name": "Miguel Almeida",            "alias": "Persona_18", "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738)},
     {"name": "Leticia Anesetti",          "alias": "Persona_19", "direction": "BATLLE Y ORDOÑEZ 2462 E AZARA"},
     {"name": "Néstor Hernández",          "alias": "Persona_20", "direction": "TEOFILO DIAZ 1624  E AP. SARAVIA"},
 ]
@@ -139,19 +78,19 @@ REQUESTS = [
     # Ida y vuelta entries:
 
     {"anon_id": "Persona_02", "tipo": "ida_y_vuelta", "name": "Sandra Zapata", "paradas": [
-        {"pos": 1, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "H. CLINICAS",         "ventana_inicio": "09:00", "ventana_fin": "12:00"},
-        {"pos": 3, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 1, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "HOSPITAL CLINICAS",         "ventana_inicio": "09:00", "ventana_fin": "12:00"},
+        {"pos": 3, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_03", "tipo": "ida_y_vuelta", "name": "Sandra Da Cruz", "paradas": [
-        {"pos": 1, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "H. CLINICAS INT",     "ventana_inicio": "09:00", "ventana_fin": "10:00"},
-        {"pos": 3, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 1, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "HOSPITAL CLINICAS",     "ventana_inicio": "09:00", "ventana_fin": "10:00"},
+        {"pos": 3, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_04", "tipo": "ida_y_vuelta", "name": "Graciela Alegre", "paradas": [
-        {"pos": 1, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "H. CLINICAS",         "ventana_inicio": "09:00", "ventana_fin": "10:00"},
-        {"pos": 3, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 1, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "HOSPITAL CLINICAS",         "ventana_inicio": "09:00", "ventana_fin": "10:00"},
+        {"pos": 3, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_05", "tipo": "ida_y_vuelta", "name": "Nelson Pereira", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "ETNA 5958",           "ventana_inicio": None,   "ventana_fin": None},
@@ -190,7 +129,7 @@ REQUESTS = [
     ]},
     {"anon_id": "Persona_13", "tipo": "ida_y_vuelta", "name": "Marta Trujillo", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "LAFONE 2261 E. CIBILS",         "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "H. CLINICAS",          "ventana_inicio": "08:00", "ventana_fin": "12:00"},
+        {"pos": 2, "coords": (None, None), "direction": "HOSPITAL CLINICAS",          "ventana_inicio": "08:00", "ventana_fin": "12:00"},
         {"pos": 3, "coords": (None, None), "direction": "LAFONE 2261 E. CIBILS",         "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_14", "tipo": "ida_y_vuelta", "name": "Jorge Silvera", "paradas": [
@@ -205,14 +144,14 @@ REQUESTS = [
     ]},
     {"anon_id": "Persona_18", "tipo": "ida_y_vuelta", "name": "Miguel Almeida", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "H. PASTEUR",         "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "CENTRO ARTIGAS",     "ventana_inicio": "12:00", "ventana_fin": "13:30"},
+        {"pos": 2, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),     "ventana_inicio": "12:00", "ventana_fin": "13:30"},
         {"pos": 3, "coords": (None, None), "direction": "H. PASTEUR",         "ventana_inicio": None,   "ventana_fin": None},
     ]},
 ]
 
 NOASIGNADOS_NAME_ALIAS_LIST = [
     {"name": "Dolores Cedrani",           "alias": "Persona_21", "direction": "MILLAN 3135"},
-    {"name": "Manuel Acevedo",            "alias": "Persona_22", "direction": "CENTRO ARTIGAS"},
+    {"name": "Manuel Acevedo",            "alias": "Persona_22", "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738)},
     {"name": "María Fernanda Fernández",  "alias": "Persona_23", "direction": "ESTEBAN GARINO 4035"},
     {"name": "Lucas Adán Mazza",          "alias": "Persona_24", "direction": "TUCAN SOLAR 2"},
     {"name": "Graciela Saavedra",         "alias": "Persona_25", "direction": "P. CASTELINO 1590"},
@@ -233,9 +172,9 @@ NO_ASIGNADOS_REQUESTS = [
         {"pos": 3, "coords": (None, None), "direction": "MILLAN 3135",            "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"name": "Manuel Acevedo",            "anon_id": "Persona_22", "tipo": "ida_y_vuelta", "paradas": [
-        {"pos": 1, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 1, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
         {"pos": 2, "coords": (None, None), "direction": "CENTRO CACHON",        "ventana_inicio": "09:00", "ventana_fin": "12:00"},
-        {"pos": 3, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 3, "coords": (None, None), "direction": "Cno. Maldonado 5745", "coords": (-34.8413565,-56.1241738),       "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"name": "María Fernanda Fernández",  "anon_id": "Persona_23", "tipo": "ida_y_vuelta", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "ESTEBAN GARINO 4035",   "ventana_inicio": None,   "ventana_fin": None},
@@ -337,12 +276,12 @@ def process_requests(name_alias_list, requests_list, db_session):
                             if parada_data['direction']:
                                 # Here you could add a geocoding service to get lat/lng
                                 # For now, just generate random coords in Montevideo
-                                lat, lng = random_lat_lng_montevideo()
+                                lat, lng = geocode()
                             else:
-                                lat, lng = random_lat_lng_montevideo()
+                                lat, lng = geocode()
                         except Exception as e:
                             print(f"Error geocoding address: {e}")
-                            lat, lng = random_lat_lng_montevideo()
+                            lat, lng = geocode()
                     else:
                         lat, lng = parada_data['coords']
                     
@@ -365,6 +304,193 @@ def process_requests(name_alias_list, requests_list, db_session):
     
     db_session.commit()
     return clients
+
+def geocode_address(address):
+    """
+    Geocode an address using Nominatim OpenStreetMap API (similar to geocoder.jsx)
+    
+    Args:
+        address: Address string to geocode
+        
+    Returns:
+        tuple: (latitude, longitude, display_name) or None if geocoding fails
+    """
+    print(f"Geocoding address: {address}")
+    formatted_address = address.replace(" ", "+")
+    url = f"https://nominatim.openstreetmap.org/search.php?street={formatted_address}&city=Montevideo&country=Uruguay&format=jsonv2"
+    
+    try:
+        # Add delay to respect Nominatim usage policy
+        time.sleep(1)  
+        response = requests.get(url, headers=HEADERS)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data and len(data) > 0:
+                # Return the first result
+                lat = float(data[0]['lat'])
+                lng = float(data[0]['lon'])
+                display_name = data[0]['display_name']
+                print(f"Found coordinates: {lat}, {lng}")
+                print(f"Location: {display_name}")
+                return (lat, lng, display_name)
+            else:
+                print(f"No coordinates found for address: {address}")
+                return None
+        else:
+            print(f"Error in geocoding request: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Exception during geocoding: {e}")
+        return None
+
+def geocode():
+    """Generate random coordinates in Montevideo area (fallback)"""
+    # Montevideo approximate bounding box
+    lat = random.uniform(-34.94, -34.80)
+    lng = random.uniform(-56.22, -56.05)
+    return (lat, lng)
+
+def save_coords_to_file(direction, lat, lng, filename="geocoded_addresses.txt"):
+    """
+    Append geocoded coordinates to a file
+    
+    Args:
+        direction: Address that was geocoded
+        lat: Latitude
+        lng: Longitude
+        filename: Output filename
+    """
+    with open(filename, 'a', encoding='utf-8') as f:
+        f.write(f"{direction},{lat},{lng}\n")
+    print(f"Saved coordinates for {direction} to {filename}")
+
+def process_requests_interactive(name_alias_list, requests_list, db_session=None):
+    """
+    Process requests interactively, asking user to confirm geocoded coordinates
+    
+    Args:
+        name_alias_list: List of client data with name, alias, and direction
+        requests_list: List of request data with stops
+        db_session: Optional SQLAlchemy database session for database operations
+    """
+    should_process_db = db_session is not None
+    
+    for c in name_alias_list:
+        # Find matching requests for this client
+        for p in requests_list:
+            if p['anon_id'] == c["alias"]:
+                print(f"\nProcessing request for {p['name']} ({c['alias']})")
+                
+                # Create pedido (request) if we're processing the database
+                if should_process_db:
+                    documento = fake.unique.random_number(digits=8)
+                    nombre = c["alias"].split("_")[0]
+                    apellido = c["alias"].split("_")[1]
+                    
+                    # Create client
+                    client = Clientes(
+                        documento=documento,
+                        nombre=nombre,
+                        apellido=apellido,
+                        direccion=c["direction"] if c["direction"] else fake.address(),
+                        observaciones=f"Client created from {c['name']}"
+                    )
+                    
+                    db_session.add(client)
+                    db_session.flush()
+                    
+                    pedido = Pedidos(
+                        cliente_documento=documento,
+                        prioridad=0,
+                        acompañante=random.choice([True, False]),
+                        tipo=p['tipo'],
+                        fecha_programado=datetime.strptime('2025-11-18', '%Y-%m-%d').date(),
+                        observaciones=f"Request for {c['name']}"
+                    )
+                    db_session.add(pedido)
+                    db_session.flush()
+                
+                # Process each parada
+                for parada_data in p['paradas']:
+                    direction = parada_data['direction']
+                    if not direction:
+                        direction = c["direction"]
+                        if not direction:
+                            print(f"Warning: No direction available for parada {parada_data['pos']}")
+                            if should_process_db:
+                                direction = fake.address()
+                            else:
+                                continue
+                    
+                    # If coords are None, geocode the address
+                    if parada_data['coords'][0] is None:
+                        result = geocode_address(direction)
+                        
+                        if result:
+                            lat, lng, display_name = result
+                            
+                            # Ask user for confirmation
+                            print(f"\nFor {p['name']}, parada {parada_data['pos']}:")
+                            print(f"Direction: {direction}")
+                            print(f"Geocoded to: {lat}, {lng}")
+                            print(f"Location: {display_name}")
+                            
+                            confirm = input("Are these coordinates correct? (y/n): ")
+                            
+                            if confirm.lower() in ['y', 'yes']:
+                                # Save the confirmed coordinates to file
+                                save_coords_to_file(direction, lat, lng)
+                                
+                                # Update parada_data with the new coordinates
+                                parada_data['coords'] = (lat, lng)
+                                
+                                # Create parada in database if we're processing it
+                                if should_process_db:
+                                    tipo_id = db_session.query(TiposParadas).filter_by(nombre='Hospital').first().id
+                                    
+                                    parada = Paradas(
+                                        id_pedido=pedido.id,
+                                        posicion_en_pedido=parada_data['pos'],
+                                        direccion=direction,
+                                        latitud=lat,
+                                        longitud=lng,
+                                        ventana_horaria_inicio=parada_data['ventana_inicio'],
+                                        ventana_horaria_fin=parada_data['ventana_fin'],
+                                        tipo=tipo_id,
+                                        observaciones=None
+                                    )
+                                    db_session.add(parada)
+                            else:
+                                print("Coordinates not confirmed. Exiting.")
+                                return False
+                        else:
+                            print(f"Failed to geocode: {direction}")
+                            print("Coordinates not provided. Exiting.")
+                            return False
+                    else:
+                        # Coords already exist
+                        lat, lng = parada_data['coords']
+                        if should_process_db:
+                            tipo_id = db_session.query(TiposParadas).filter_by(nombre='Hospital').first().id
+                            
+                            parada = Paradas(
+                                id_pedido=pedido.id,
+                                posicion_en_pedido=parada_data['pos'],
+                                direccion=direction,
+                                latitud=lat,
+                                longitud=lng,
+                                ventana_horaria_inicio=parada_data['ventana_inicio'],
+                                ventana_horaria_fin=parada_data['ventana_fin'],
+                                tipo=tipo_id,
+                                observaciones=None
+                            )
+                            db_session.add(parada)
+    
+    if should_process_db:
+        db_session.commit()
+    
+    return True
 
 def main():
     db = SessionLocal()
@@ -391,5 +517,62 @@ def main():
     print("All requests processed successfully!")
     db.close()
 
+def interactive_main():
+    """Main function for interactive geocoding"""
+    # Create geocoded_addresses.txt file or clear it if it exists
+    with open("geocoded_addresses.txt", 'w', encoding='utf-8') as f:
+        f.write("direction,latitude,longitude\n")
+    
+    print("Starting interactive geocoding process...")
+    
+    # Process without database operations first to confirm all geocodes
+    print("\nGathering and confirming coordinates...")
+    success = process_requests_interactive(NAME_ALIAS_LIST, REQUESTS)
+    
+    if not success:
+        print("Geocoding process interrupted.")
+        return
+    
+    success = process_requests_interactive(NOASIGNADOS_NAME_ALIAS_LIST, NO_ASIGNADOS_REQUESTS)
+    
+    if not success:
+        print("Geocoding process interrupted.")
+        return
+    
+    # Ask if user wants to proceed with database operations
+    proceed = input("\nAll coordinates confirmed. Proceed with database operations? (y/n): ")
+    
+    if proceed.lower() in ['y', 'yes']:
+        db = SessionLocal()
+        
+        # Check if TiposParadas exists, if not create them
+        if db.query(TiposParadas).count() == 0:
+            print("Creating TiposParadas...")
+            tipos = [
+                TiposParadas(nombre='Hospital'),
+                TiposParadas(nombre='Particular'),
+                TiposParadas(nombre='Mides')
+            ]
+            db.add_all(tipos)
+            db.commit()
+        
+        # Process with database operations
+        print("Processing requests for database...")
+        process_requests_interactive(NAME_ALIAS_LIST, REQUESTS, db)
+        process_requests_interactive(NOASIGNADOS_NAME_ALIAS_LIST, NO_ASIGNADOS_REQUESTS, db)
+        
+        print("All requests processed successfully!")
+        db.close()
+    else:
+        print("Database operations skipped.")
+
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Process requests with geocoding')
+    parser.add_argument('--interactive', action='store_true', help='Run in interactive mode with geocoding')
+    args = parser.parse_args()
+    
+    if args.interactive:
+        interactive_main()
+    else:
+        main()
