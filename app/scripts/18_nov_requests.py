@@ -210,42 +210,6 @@ REQUESTS = [
     ]},
 ]
 
-# List of clients with placeholders for DB insertion
-for c in NAME_ALIAS_LIST
-    CLIENT = [
-        {
-            "documento": fake.unique.random_number(digits=8),
-            "nombre": c["alias"].split("_")[0],
-            "apellido": c["alias"].split("_")[1],
-            "direccion": c["direction"]
-        }
-    ]
-    for p in REQUESTS:
-        if p['anon_id'] == c["alias"]:
-            PEDIDO = [
-                {
-                    'cliente_documento': CLIENT[0]["documento"],
-                    'prioridad':0,
-                    'acompañante':random.choice([True, False]),
-                    'tipo':p.tipo,
-                    'fecha_programado': '2025-11-18 00:00:00',
-                    'paradas': [
-                        {
-                            'posicion_en_pedido':pp['pos'],
-                            'direccion': c["direction"] if c["direction"] else fake.address(),
-                            'latitud': None,
-                            'longitud': None,
-                            'ventana_horaria_inicio':pp['ventana_inicio'],
-                            'ventana_horaria_fin':pp['ventana_fin'],
-                            'tipo': 'Hospital',
-                            'observaciones': None
-                        } 
-                        for pp in p
-                    ]
-                }
-            ]
-
-            
 NOASIGNADOS_NAME_ALIAS_LIST = [
     {"name": "Dolores Cedrani",           "alias": "Persona_21", "direction": "MILLAN 3135"},
     {"name": "Manuel Acevedo",            "alias": "Persona_22", "direction": "CENTRO ARTIGAS"},
@@ -260,71 +224,172 @@ NOASIGNADOS_NAME_ALIAS_LIST = [
     {"name": "Mateo Techera",             "alias": "Persona_31", "direction": "MIDES 18 DE JULIO PJE H 1681"},
 ]
 
-# List of non-asigned clients
-NO_ASIGNADOS_CLIENTS = [
-    {
-        "documento": fake.unique.random_number(digits=8),
-        "nombre": c["alias"].split("_")[0],
-        "apellido": c["alias"].split("_")[1],
-        "direccion": c["direction"]
-    }
-    for c in NOASIGNADOS_NAME_ALIAS_LIST
-]
-
 # Define requests for non-asignados
 NO_ASIGNADOS_REQUESTS = [
     # Ida y vuelta (appear twice):
-    {"anon_id": "Persona_21", "tipo": "ida_y_vuelta", "paradas": [  # Dolores Cedrani
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "08:00", "ventana_fin": "11:30"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "Dolores Cedrani",           "anon_id": "Persona_21", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "MILLAN 3135",            "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "OSORIO 1370",           "ventana_inicio": "08:00", "ventana_fin": "11:30"},
+        {"pos": 3, "coords": (None, None), "direction": "MILLAN 3135",            "ventana_inicio": None,   "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_22", "tipo": "ida_y_vuelta", "paradas": [  # Manuel Acevedo
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "09:00", "ventana_fin": "12:00"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "Manuel Acevedo",            "anon_id": "Persona_22", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "CENTRO CACHON",        "ventana_inicio": "09:00", "ventana_fin": "12:00"},
+        {"pos": 3, "coords": (None, None), "direction": "CENTRO ARTIGAS",       "ventana_inicio": None,   "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_23", "tipo": "ida_y_vuelta", "paradas": [  # María Fernanda Fernández
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "12:00", "ventana_fin": "15:00"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "María Fernanda Fernández",  "anon_id": "Persona_23", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "ESTEBAN GARINO 4035",   "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "ERNESTO CANTERO 802 ESCULA 200",    "ventana_inicio": "12:00", "ventana_fin": "15:00"},
+        {"pos": 3, "coords": (None, None), "direction": "ESTEBAN GARINO 4035",   "ventana_inicio": None,   "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_24", "tipo": "ida_y_vuelta", "paradas": [  # Lucas Adán Mazza
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "10:00", "ventana_fin": "13:00"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "Lucas Adán Mazza",          "anon_id": "Persona_24", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "TUCAN SOLAR 2",         "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "MURILLO 2644",        "ventana_inicio": "10:00", "ventana_fin": "13:00"},
+        {"pos": 3, "coords": (None, None), "direction": "TUCAN SOLAR 2",         "ventana_inicio": None,   "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_25", "tipo": "ida_y_vuelta", "paradas": [  # Graciela Saavedra
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "10:00", "ventana_fin": "13:00"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "Graciela Saavedra",         "anon_id": "Persona_25", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "P. CASTELINO 1590",    "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "MURILLO 2644",         "ventana_inicio": "10:00", "ventana_fin": "13:00"},
+        {"pos": 3, "coords": (None, None), "direction": "P. CASTELINO 1590",    "ventana_inicio": None,   "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_26", "tipo": "ida_y_vuelta", "paradas": [  # Leonardo Fernández
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "10:00", "ventana_fin": "13:00"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "Leonardo Fernández",        "anon_id": "Persona_26", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "SANTA LUCIA 4451",     "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "MURILLO 2644 E CAPOAMOR","ventana_inicio": "10:00", "ventana_fin": "13:00"},
+        {"pos": 3, "coords": (None, None), "direction": "SANTA LUCIA 4451",     "ventana_inicio": None,   "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_30", "tipo": "ida_y_vuelta", "paradas": [  # Felisa González
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "14:30", "ventana_fin": "16:30"},
-        {"pos": 3, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
+    {"name": "Felisa González",           "anon_id": "Persona_30", "tipo": "ida_y_vuelta", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "L.A.DE HERRERA 1975/001","ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "I18 DE JULIO Y PABLO DE MARIA (IGLESIA)","ventana_inicio": "14:30", "ventana_fin": "16:30"},
+        {"pos": 3, "coords": (None, None), "direction": "L.A.DE HERRERA 1975/001","ventana_inicio": None,   "ventana_fin": None},
     ]},
 
     # Solo ida (appear once):
-    {"anon_id": "Persona_27", "tipo": "solo_ida", "paradas": [  # Washington González
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "18:00", "ventana_fin": None},
+    {"name": "Washington González",       "anon_id": "Persona_27", "tipo": "solo_ida", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "CEIBAL Y PANDO",     "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "COOPERATIVA ZUNFELDE","ventana_inicio": "18:00", "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_28", "tipo": "solo_ida", "paradas": [  # Lucía Barboza
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "19:20", "ventana_fin": None},
+    {"name": "Lucía Barboza",             "anon_id": "Persona_28", "tipo": "solo_ida", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "CARLOS DE LA VEGA 5514","ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "JOAQUIN REQUENA 3010",   "ventana_inicio": "19:20", "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_29", "tipo": "solo_ida", "paradas": [  # Agustín Villavedra Ferrari
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "18:00", "ventana_fin": None},
+    {"name": "Agustín Villavedra Ferrari","anon_id": "Persona_29", "tipo": "solo_ida", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "FERRARI",        "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "MICHIGAN 1538 E DECROLLI",            "ventana_inicio": "18:00", "ventana_fin": None},
     ]},
-    {"anon_id": "Persona_31", "tipo": "solo_ida", "paradas": [  # Mateo Techera
-        {"pos": 1, "coords": (None, None), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "ventana_inicio": "17:00", "ventana_fin": None},
+    {"name": "Mateo Techera",             "anon_id": "Persona_31", "tipo": "solo_ida", "paradas": [
+        {"pos": 1, "coords": (None, None), "direction": "MIDES 18 DE JULIO", "ventana_inicio": None,   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "PJE H 1681 E A SARAVIA Y ALBENIZ",    "ventana_inicio": "17:00", "ventana_fin": None},
     ]},
 ]
+
+def process_requests(name_alias_list, requests_list, db_session):
+    """
+    Process a list of clients and their corresponding requests
+    
+    Args:
+        name_alias_list: List of client data with name, alias, and direction
+        requests_list: List of request data with stops
+        db_session: SQLAlchemy database session
+    """
+    clients = []
+    # Create clients
+    for c in name_alias_list:
+        documento = fake.unique.random_number(digits=8)
+        nombre = c["alias"].split("_")[0]
+        apellido = c["alias"].split("_")[1]
+        
+        # Create client
+        client = Clientes(
+            documento=documento,
+            nombre=nombre,
+            apellido=apellido,
+            direccion=c["direction"] if c["direction"] else fake.address(),
+            observaciones=f"Client created from {c['name']}"
+        )
+        
+        # Add client to session
+        db_session.add(client)
+        db_session.flush()
+        clients.append(client)
+        
+        # Find matching requests for this client
+        for p in requests_list:
+            if p['anon_id'] == c["alias"]:
+                # Create pedido (request)
+                pedido = Pedidos(
+                    cliente_documento=documento,
+                    prioridad=0,
+                    acompañante=random.choice([True, False]),
+                    tipo=p['tipo'],
+                    fecha_programado=datetime.strptime('2025-11-18', '%Y-%m-%d').date(),
+                    observaciones=f"Request for {c['name']}"
+                )
+                db_session.add(pedido)
+                db_session.flush()
+                
+                # Create paradas (stops)
+                for parada_data in p['paradas']:
+                    # Get coordinates if needed
+                    lat, lng = None, None
+                    if parada_data['coords'][0] is None:
+                        # Try to get real coordinates for the address
+                        try:
+                            if parada_data['direction']:
+                                # Here you could add a geocoding service to get lat/lng
+                                # For now, just generate random coords in Montevideo
+                                lat, lng = random_lat_lng_montevideo()
+                            else:
+                                lat, lng = random_lat_lng_montevideo()
+                        except Exception as e:
+                            print(f"Error geocoding address: {e}")
+                            lat, lng = random_lat_lng_montevideo()
+                    else:
+                        lat, lng = parada_data['coords']
+                    
+                    # Find or create tipo parada
+                    tipo_id = db_session.query(TiposParadas).filter_by(nombre='Hospital').first().id
+                    
+                    # Create parada
+                    parada = Paradas(
+                        id_pedido=pedido.id,
+                        posicion_en_pedido=parada_data['pos'],
+                        direccion=parada_data.get('direction', c["direction"]) or fake.address(),
+                        latitud=lat,
+                        longitud=lng,
+                        ventana_horaria_inicio=parada_data['ventana_inicio'],
+                        ventana_horaria_fin=parada_data['ventana_fin'],
+                        tipo=tipo_id,
+                        observaciones=None
+                    )
+                    db_session.add(parada)
+    
+    db_session.commit()
+    return clients
+
+def main():
+    db = SessionLocal()
+    
+    # Check if TiposParadas exists, if not create them
+    if db.query(TiposParadas).count() == 0:
+        print("Creating TiposParadas...")
+        tipos = [
+            TiposParadas(nombre='Hospital'),
+            TiposParadas(nombre='Particular'),
+            TiposParadas(nombre='Mides')
+        ]
+        db.add_all(tipos)
+        db.commit()
+    
+    # Process regular requests
+    print("Processing regular requests...")
+    process_requests(NAME_ALIAS_LIST, REQUESTS, db)
+    
+    # Process non-assigned requests
+    print("Processing non-assigned requests...")
+    process_requests(NOASIGNADOS_NAME_ALIAS_LIST, NO_ASIGNADOS_REQUESTS, db)
+    
+    print("All requests processed successfully!")
+    db.close()
+
+if __name__ == "__main__":
+    main()
