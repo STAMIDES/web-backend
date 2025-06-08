@@ -16,12 +16,22 @@ import random
 import models as m
 import logging
 log = logging.getLogger(__name__)
+import os
 
 from sqlalchemy import CheckConstraint # type: ignore
 
 import autenticacion.autenticacion as aut
 
 SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
+
+dominio_frontend=os.getenv('DOMINIO_FRONTEND')
+
+INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
+INVITATION_BODY_TEMPLATE = f""" Hola {{nombre_usuario}}, 
+Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
+ingresa aqui {dominio_frontend}/cuenta/registro/{{hash_link}} para generar una contraseña y completar tu registro."""
+
+
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
@@ -45,7 +55,6 @@ class Usuarios(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     nombre = Column(String)
-    rol = Column(SQLAEnum(m.TipoUsuario), nullable=False)
     token = Column(String)
     refresh_tokens = relationship("RefreshToken", back_populates="user")
 
@@ -68,7 +77,6 @@ class InvitacionUsuario(Base):
     email = Column(String, index=True, unique=True, nullable=False)
     used = Column(Boolean, default=False)
     nombre = Column(String)
-    rol = Column(String)
 
 class PasswordResetToken(Base):
     __tablename__ = 'password_reset_tokens'
@@ -92,8 +100,8 @@ def add_usuario_db(usuario): #FIXME: REMOVER SOLO USADO PARA DEVELOPMENT, CREAR 
 def registrar_usuario(usuarioInv, nuevo_user):
     with get_db() as db:
         hashed_password = aut.get_password_hash(nuevo_user.password)
-        usuario_obj = Usuarios(rol = usuarioInv.rol, email=usuarioInv.email, #Se usa rol y email de la invitación
-                               nombre=nuevo_user.nombre, hashed_password=hashed_password) # el nuevo usuario puede tener un nombre distinto al de la invitación
+        usuario_obj = Usuarios(email=usuarioInv.email,
+                               nombre=nuevo_user.nombre, hashed_password=hashed_password)
         db.add(usuario_obj)
         db.query(InvitacionUsuario).filter(InvitacionUsuario.hash_link == usuarioInv.hash_link,
                                           InvitacionUsuario.used==False ).update({"used": True})
@@ -108,7 +116,6 @@ def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
             search_func = or_(
                     Usuarios.nombre.ilike(f'%{search}%'),
                     Usuarios.email.ilike(f'%{search}%'),
-                    cast(Usuarios.rol, String).ilike(f'%{search}%')
                 )
         else:
             search_func = True
@@ -119,7 +126,6 @@ def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
                 'id': user.id,
                 'email': user.email,
                 'nombre': user.nombre,
-                'rol': user.rol
             })
         cantidad = db.query(Usuarios).filter(search_func).count()
         return public_users_full, cantidad
@@ -131,7 +137,6 @@ def get_usuario_db(id_usuario):
             'id': usuario.id,
             'email': usuario.email,
             'nombre': usuario.nombre,
-            'rol': usuario.rol
         }
     
 def update_usuario_db(email, usuario):
@@ -192,11 +197,8 @@ def is_refresh_token_valid(user_id: int, refresh_token: str):
             RefreshToken.is_revoked == False
         ).first()
         return token is not None
+    
 
-INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
-INVITATION_BODY_TEMPLATE = """ Hola {nombre_usuario}, 
-Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
-ingresa aqui https://mides.com/account/{hash_link} para generar una contraseña y completar tu registro."""
 
 def generate_invitation(usuario_invite: InvitacionUsuario):
     try:
@@ -219,7 +221,6 @@ def generate_invitation(usuario_invite: InvitacionUsuario):
                 hash_link=hash_link,
                 email=usuario_invite.email,
                 nombre=usuario_invite.nombre,
-                rol=usuario_invite.rol
             )
             db.add(new_invitation)
             db.commit()
@@ -1248,8 +1249,47 @@ def get_planificacion_db(id_planificacion: int):
         return planificacion
 
 # Internal helper function
-def _get_planificaciones(db, filter_val, offset, limit, search=None):
-    planificaciones = db.query(Planificaciones).options(
+def _get_planificaciones(db, filter_val, offset, limit, search=None, get_cantidad=False):
+    query = db.query(Planificaciones)
+    
+    # Join necessary tables for search functionality
+    query = query.join(Usuarios, Usuarios.id == Planificaciones.usuario_id)
+    
+    # If search parameter is provided, add search filters
+    if search:
+        search_term = f"%{search}%"
+        search_filter = or_(
+            Usuarios.nombre.ilike(search_term), 
+            cast(Planificaciones.id, String).ilike(search_term), 
+        )
+        
+        # Additional joins for searching related entities
+        query = query.outerjoin(Rutas, Rutas.id_planificacion == Planificaciones.id)
+        query = query.outerjoin(Vehiculos, Vehiculos.id == Rutas.id_vehiculo)
+        query = query.outerjoin(Choferes, Choferes.id == Rutas.id_chofer)
+        
+        # Add more search conditions
+        search_filter = or_(
+            search_filter,
+            Vehiculos.matricula.ilike(search_term),  # Vehicle registration
+            Vehiculos.descripcion.ilike(search_term),  # Vehicle description
+            Choferes.nombre.ilike(search_term),  # Driver name
+            Choferes.apellido.ilike(search_term)  # Driver last name
+        )
+        
+        # Apply the search filter
+        filter_val = filter_val & search_filter
+    
+    # Create a base query with all necessary filters
+    base_query = query.filter(filter_val)
+    
+    # Get count if needed - using the same query structure with distinct to avoid duplicates
+    cantidad = None
+    if get_cantidad:
+        cantidad = base_query.with_entities(func.count(distinct(Planificaciones.id))).scalar()
+    
+    # Apply options and get results
+    planificaciones = base_query.options(
         joinedload(Planificaciones.turnos),
         joinedload(Planificaciones.rutas)
             .load_only(Rutas.id, 
@@ -1272,12 +1312,14 @@ def _get_planificaciones(db, filter_val, offset, limit, search=None):
             .load_only(Usuarios.nombre),
         joinedload(Planificaciones.pedidos_no_atendidos)
                 .joinedload(PedidosNoAtendidos.pedido)
-    ).filter(filter_val).offset(offset).limit(limit).all()
+    ).offset(offset).limit(limit).all()
 
     for plan in planificaciones:
         plan.__dict__["fmt_fecha"] = plan.fmt_fecha
         plan.__dict__["fmt_fecha_creacion"] = plan.fmt_fecha_creacion
 
+    if get_cantidad:
+        return planificaciones, cantidad
     return planificaciones
 
 def get_planificaciones_by_dia_db(fecha: str, limit: int = 100, offset: int = 0, search: str = ''):
@@ -1285,8 +1327,7 @@ def get_planificaciones_by_dia_db(fecha: str, limit: int = 100, offset: int = 0,
         fecha_dt = datetime.strptime(fecha, '%Y-%m-%d')
         filter_val = Planificaciones.fecha == fecha_dt
 
-        planificaciones = _get_planificaciones(db, filter_val, offset, limit, search)
-        cantidad = db.query(Planificaciones).filter(filter_val).count()
+        planificaciones, cantidad = _get_planificaciones(db, filter_val, offset, limit, search, get_cantidad=True)
 
         return planificaciones, cantidad
 
@@ -1299,8 +1340,7 @@ def get_planificaciones_by_rango_db(fecha_start: datetime, fecha_end: datetime, 
         if definitivas is not None:
             filter_val = filter_val & (Planificaciones.definitiva == definitivas)
 
-        planificaciones = _get_planificaciones(db, filter_val, offset, limit)
-        cantidad = db.query(Planificaciones).filter(filter_val).count()
+        planificaciones, cantidad = _get_planificaciones(db, filter_val, offset, limit, get_cantidad=True)
 
         return planificaciones, cantidad
 

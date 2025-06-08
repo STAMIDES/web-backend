@@ -35,6 +35,7 @@ services:
       - SENDER_EMAIL=${SENDER_EMAIL}
       - SENDER_PASSWORD=${SENDER_PASSWORD}
       - SENDER_APP_PASSWORD=${SENDER_APP_PASSWORD}
+      - DOMINIO_FRONTEND=localhost:5173 # TODO: CAMBIAR EN PRODUCCION
     networks:
       - backend-network
     volumes:

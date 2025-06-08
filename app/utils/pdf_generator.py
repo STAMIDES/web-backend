@@ -30,6 +30,8 @@ def generate_planificacion_pdf(planificacion_data):
                         leftMargin=0.5*inch, rightMargin=0.5*inch,
                         topMargin=0.5*inch, bottomMargin=0.5*inch)
     styles = getSampleStyleSheet()
+    # Create a smaller font style for the table content
+    small_style = ParagraphStyle('Small', parent=styles['Normal'], fontSize=8)
     story = []
 
     # Title - Handle both dict and object access
@@ -68,28 +70,102 @@ def generate_planificacion_pdf(planificacion_data):
         story.append(Spacer(1, 0.15*inch))
 
         # Visits Table
-        visitas_data = [[Paragraph("<b>Hora Llegada</b>", styles['Normal']), Paragraph("<b>Dirección / Lugar</b>", styles['Normal'])]]
+        visitas_data = [[Paragraph("<b>Hora</b>", small_style), 
+                         Paragraph("<b>Acción</b>", small_style),
+                         Paragraph("<b>Dirección / Lugar</b>", small_style),
+                         Paragraph("<b>Contacto Usuario</b>", small_style)]]
         
         # Access visits using getattr to be safe
         visitas = sorted(getattr(ruta, 'visitas', []), key=lambda v: getattr(v, 'hora_llegada', None) or datetime.min.time()) # Ensure visits are sorted by time
         
+        # Dictionary to track client document appearances
+        cliente_documento_count = defaultdict(int)
+        
         for visita in visitas:
             hora_llegada = format_time(getattr(visita, 'hora_llegada', None))
             direccion = ""
+            accion = ""
+            contacto = "N/A"  # Default contact info
             tipo_item = getattr(visita, 'tipo_item', None)
             item = getattr(visita, 'item', None)
             
             if tipo_item == m.TipoItemVisita.parada:
                 direccion = getattr(item, 'direccion', 'Parada no encontrada') if item else 'Parada no encontrada'
+                
+                # Get client info
+                pedido = getattr(item, 'pedido', None)
+                cliente = None
+                if pedido:
+                    cliente = getattr(pedido, 'cliente', None)
+                
+                if cliente:
+                    nombre = getattr(cliente, 'nombre', '')
+                    apellido = getattr(cliente, 'apellido', '')
+                    documento = getattr(cliente, 'documento', '')
+                    
+                    # Get client contact information
+                    telefono = getattr(cliente, 'telefono', None)
+                    email = getattr(cliente, 'email', None)
+                    
+                    if telefono:
+                        contacto = f"tel: {telefono}"
+                    elif email:
+                        contacto = f"mail: {email}"
+                    
+                    # Count appearances for this client
+                    cliente_documento_count[documento] += 1
+                    
+                    # Determine if pick up or drop off
+                    if cliente_documento_count[documento] % 2 == 1:  # Odd count = pickup
+                        accion = f"Recoger a {nombre} {apellido}"
+                    else:  # Even count = dropoff
+                        accion = f"Dejar a {nombre} {apellido}"
+                    
+                    # Check for special conditions
+                    caracteristicas = getattr(cliente, 'caracteristicas', [])
+                    special_conditions = []
+                    
+                    for caracteristica in caracteristicas:
+                        nombre_caracteristica = getattr(caracteristica, 'nombre', '')
+                        if nombre_caracteristica == 'silla_de_ruedas':
+                            special_conditions.append('Usa silla de ruedas')
+                        elif nombre_caracteristica == 'rampa_electrica':
+                            special_conditions.append('Precisa rampa eléctrica')
+                        elif nombre_caracteristica:  # Include any other characteristic
+                            special_conditions.append(nombre_caracteristica)
+                    
+                    # Add acompañante info
+                    if pedido and getattr(pedido, 'acompañante', False):
+                        special_conditions.append('Con acompañante')
+                    
+                    # Add special conditions to action text
+                    if special_conditions:
+                        accion += f" ({', '.join(special_conditions)})"
+                else:
+                    accion = "No especificado"
+            
             elif tipo_item == m.TipoItemVisita.lugar_comun:
                 direccion = getattr(item, 'nombre', 'Lugar común no encontrado') if item else 'Lugar común no encontrado'
+                
+                # Determine if it's start or end based on position in route
+                if visitas.index(visita) == 0:
+                    accion = "Comienzo"
+                elif visitas.index(visita) == len(visitas) - 1:
+                    accion = "Fin"
+                else:
+                    accion = "Parada intermedia"
             else:
-                 direccion = "Tipo de item desconocido"
+                direccion = "Tipo de item desconocido"  
+                accion = "Acción desconocida"
 
-            visitas_data.append([Paragraph(hora_llegada, styles['Normal']), Paragraph(direccion, styles['Normal'])])
+            visitas_data.append([Paragraph(hora_llegada, small_style), 
+                                Paragraph(accion, small_style),
+                                Paragraph(direccion, small_style),
+                                Paragraph(contacto, small_style)])
 
         if len(visitas_data) > 1:
-            visitas_table = Table(visitas_data, colWidths=[1.5*inch, 5.5*inch])
+            # Adjust column widths to fit the new column
+            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 2.5*inch, 2.5*inch, 2*inch])
             visitas_table.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.grey),
                 ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
@@ -99,8 +175,8 @@ def generate_planificacion_pdf(planificacion_data):
                 ('BOTTOMPADDING', (0,0), (-1,0), 12),
                 ('BACKGROUND', (0,1), (-1,-1), colors.beige),
                 ('GRID', (0,0), (-1,-1), 1, colors.black),
-                ('ALIGN', (1,1), (1,-1), 'LEFT'), # Align address column to the left
-                ('LEFTPADDING', (1,1), (1,-1), 6),
+                ('ALIGN', (1,1), (2,-1), 'LEFT'), # Align address and action columns to the left
+                ('LEFTPADDING', (1,1), (2,-1), 6),
             ]))
             story.append(visitas_table)
         else:

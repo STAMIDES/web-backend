@@ -14,6 +14,7 @@ from datetime import datetime
 import logging
 from utils import Mailer
 import traceback
+import os
 log = logging.getLogger("routes")
 
 # region Usuarios
@@ -57,6 +58,7 @@ def invite_usuario(usuarioInv: InvitacionUsuario):
             mailer = Mailer()
             subject = db.INVITATION_SUBJECT_TEMPLATE
             body = db.INVITATION_BODY_TEMPLATE.format(nombre_usuario=usuarioInv.nombre, hash_link=hash_link)
+            log.info(f"Invitación enviada a {usuarioInv.email} con hash_link {hash_link}, mensaje: {body}")
             mailer.send(usuarioInv.email, subject, body)
             return {'detail': usuarioInv.nombre + ' ha sido invitado correctamente'}
         else:
@@ -213,7 +215,9 @@ def forgot_password(request: ForgotPasswordRequest):
         
         # Send email with reset link
         mailer = Mailer()
-        reset_link = f"https://mides.com/cuenta/reset-password/{token}?email={email}"
+        #get docker compose env variables
+        dominio_frontend=os.getenv('DOMINIO_FRONTEND')
+        reset_link = f"{dominio_frontend}/cuenta/reset-password/{token}?email={email}"
         mailer.send_forgot_password_email(email, user.nombre or 'usuario', reset_link)
         return { "message": "Se envio un mail con instrucciones para cambiar la contraseña"}
     except HTTPException as e:
