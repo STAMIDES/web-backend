@@ -169,6 +169,8 @@ class Rutas(BaseModel):
     hora_inicio: time
     hora_fin: time
     geometria: List[List[float]]
+    descanso_inicio: Optional[time] = None
+    descanso_fin: Optional[time] = None
     observaciones: Optional[str] = None
     visitas: List[Visitas] = None
 

@@ -1292,7 +1292,12 @@ def _get_planificaciones(db, filter_val, offset, limit, search=None, get_cantida
     planificaciones = base_query.options(
         joinedload(Planificaciones.turnos),
         joinedload(Planificaciones.rutas)
-            .load_only(Rutas.id, Rutas.hora_fin, Rutas.hora_inicio)
+            .load_only(Rutas.id, 
+                       Rutas.hora_fin, 
+                       Rutas.hora_inicio,
+                       Rutas.descanso_inicio,
+                       Rutas.descanso_fin
+                       ) 
             .joinedload(Rutas.vehiculo),
         joinedload(Planificaciones.rutas)
             .joinedload(Rutas.chofer),
@@ -1494,6 +1499,8 @@ class Rutas(Base):
     hora_fin = Column(Time, nullable=False)
     geometria = Column(Geometry(geometry_type='LINESTRING', srid=4326))
     observaciones = Column(String)
+    descanso_inicio = Column(Time, nullable=True) # Added
+    descanso_fin = Column(Time, nullable=True)    # Added
     planificacion = relationship('Planificaciones', back_populates='rutas')
     vehiculo = relationship('Vehiculos')
     chofer = relationship('Choferes')
@@ -1509,7 +1516,9 @@ def add_ruta_db(ruta):
             hora_inicio=ruta.hora_inicio,
             hora_fin=ruta.hora_fin,
             geometria=geometria_wkt,  
-            observaciones=ruta.observaciones
+            observaciones=ruta.observaciones,
+            descanso_inicio=getattr(ruta, 'descanso_inicio', None),
+            descanso_fin=getattr(ruta, 'descanso_fin', None)
         )
         db.add(ruta_obj)
         db.commit()
