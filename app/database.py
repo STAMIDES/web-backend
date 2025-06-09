@@ -4,7 +4,7 @@ from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
 from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from shapely.geometry import LineString
 from geoalchemy2 import WKTElement
 from geoalchemy2.shape import to_shape
@@ -535,13 +535,18 @@ class Pedidos(Base):
 def add_pedido_db(pedido):
     with get_db() as db:
         pedido_obj = pedido.dict()
-        paradas = pedido_obj.pop('paradas', [])
+        paradas_data = pedido_obj.pop('paradas', [])
         pedido_obj = Pedidos(**pedido_obj)
         db.add(pedido_obj)
         db.flush()
         paradas_obj = []
-        for parada in paradas:           
-            parada_obj = Paradas(**parada)
+        for parada_item_data in paradas_data:           
+            if parada_item_data.get('ventana_horaria_inicio') and isinstance(parada_item_data['ventana_horaria_inicio'], time):
+                parada_item_data['ventana_horaria_inicio'] = parada_item_data['ventana_horaria_inicio'].replace(second=0, microsecond=0)
+            if parada_item_data.get('ventana_horaria_fin') and isinstance(parada_item_data['ventana_horaria_fin'], time):
+                parada_item_data['ventana_horaria_fin'] = parada_item_data['ventana_horaria_fin'].replace(second=0, microsecond=0)
+            
+            parada_obj = Paradas(**parada_item_data)
             parada_obj.id_pedido = pedido_obj.id
             db.add(parada_obj)
             db.flush()
@@ -743,9 +748,13 @@ class Paradas(Base):
     pedido = relationship('Pedidos', foreign_keys=[id_pedido])
 
 # Agrega una parada a un pedido
-def add_parada_pedido_db(parada, id_pedido):
+def add_parada_pedido_db(parada: dict, id_pedido: int):
     with get_db() as db:
-        #parada_obj = Paradas(**parada.dict())
+        if parada.get('ventana_horaria_inicio') and isinstance(parada['ventana_horaria_inicio'], time):
+            parada['ventana_horaria_inicio'] = parada['ventana_horaria_inicio'].replace(second=0, microsecond=0)
+        if parada.get('ventana_horaria_fin') and isinstance(parada['ventana_horaria_fin'], time):
+            parada['ventana_horaria_fin'] = parada['ventana_horaria_fin'].replace(second=0, microsecond=0)
+
         parada_obj = Paradas(**parada)
         parada_obj.id_pedido = id_pedido
         db.add(parada_obj)
@@ -753,9 +762,9 @@ def add_parada_pedido_db(parada, id_pedido):
         db.refresh(parada_obj)
         return parada_obj
     
-def get_parada_db(id_parada, ):
+def get_parada_db(id_parada: int):
     with get_db() as db:
-        return db.query(Paradas).filter(Paradas.id_parada == id_parada).first()
+        return db.query(Paradas).filter(Paradas.id == id_parada).first()
 
 def get_paradas_pedido_db(id_pedido, limit: int = 100, offset: int = 0):
     with get_db() as db:
@@ -765,16 +774,27 @@ def get_paradas_pedido_db(id_pedido, limit: int = 100, offset: int = 0):
 
 def update_parada_db(id_parada, parada):
     with get_db() as db:
-        db.query(Paradas).filter(Paradas.id_parada == id_parada).update(parada.dict())
+        # Modify the Pydantic model instance directly if fields are present and are time objects
+        if hasattr(parada, 'ventana_horaria_inicio') and parada.ventana_horaria_inicio is not None and isinstance(parada.ventana_horaria_inicio, time):
+            parada.ventana_horaria_inicio = parada.ventana_horaria_inicio.replace(second=0, microsecond=0)
+        
+        if hasattr(parada, 'ventana_horaria_fin') and parada.ventana_horaria_fin is not None and isinstance(parada.ventana_horaria_fin, time):
+            parada.ventana_horaria_fin = parada.ventana_horaria_fin.replace(second=0, microsecond=0)
+
+        update_data = parada.dict(exclude_unset=True) 
+
+        db.query(Paradas).filter(Paradas.id == id_parada).update(update_data)
         db.commit()
         return parada
     
 # Elimina una parada y actualiza las posiciones de las paradas restantes
-def delete_parada_db(id_parada):
+def delete_parada_db(id_parada: int):
     with get_db() as db:
-        parada = db.query(Paradas).filter(Paradas.id_parada == id_parada).first()
+        parada = db.query(Paradas).filter(Paradas.id == id_parada).first()
+        if not parada:
+            raise HTTPException(status_code=404, detail=f"Parada con ID {id_parada} no encontrada.")
         id_pedido = parada.id_pedido
-        db.query(Paradas).filter(Paradas.id_parada == id_parada).delete()
+        db.query(Paradas).filter(Paradas.id == id_parada).delete()
         db.query(Paradas).filter(Paradas.id_pedido == id_pedido, Paradas.posicion_en_pedido > parada.posicion_en_pedido).update({Paradas.posicion_en_pedido: Paradas.posicion_en_pedido - 1})
         db.commit()
         return {"message": f"Parada con ID {id_parada} eliminada correctamente."}
@@ -1132,12 +1152,13 @@ class PedidosNoAtendidos(Base):
     id = Column(Integer, primary_key=True, index=True)
     id_planificacion = Column(Integer, ForeignKey('planificaciones.id'))
     id_pedido = Column(Integer, ForeignKey('pedidos.id'))
+    no_enviado_al_optimizador = Column(Boolean, default=False)
     
     planificacion = relationship('Planificaciones', back_populates='pedidos_no_atendidos')
     pedido = relationship('Pedidos')
 
 # Crea un planificación y dos turnos asociados
-def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos=None):
+def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos=None, pedidos_no_seleccionados=None):
     with get_db() as db:
         planificacion.usuario_id = user_id
         planificacion_obj = add_planificacion_db(planificacion)
@@ -1160,6 +1181,15 @@ def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendi
                     id_pedido=pedido_id
                 )
                 db.add(pedido_no_atendido)
+            db.commit()
+        if pedidos_no_seleccionados:
+            for pedido_id in pedidos_no_seleccionados:
+                pedido_no_seleccionado = PedidosNoAtendidos(
+                    id_planificacion=planificacion_obj.id,
+                    id_pedido=pedido_id,
+                    no_enviado_al_optimizador=True # el creador de la planificacion no envio estos pedidos al optimizador,
+                )                                  # fueron dejados sin atender intencionalmente                       
+                db.add(pedido_no_seleccionado)
             db.commit()
         return get_planificacion_db(planificacion_obj.id)
 
@@ -1234,18 +1264,25 @@ def get_planificacion_db(id_planificacion: int):
                         visita.item = parada
                     else:
                         visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
+            processed_pedidos_no_atendidos = []
             if planificacion.pedidos_no_atendidos:
+                for pna in planificacion.pedidos_no_atendidos:
+                    pedido_obj = pna.pedido
+                    if pedido_obj:
+                        setattr(pedido_obj, 'no_enviado_al_optimizador', pna.no_enviado_al_optimizador)
+                        processed_pedidos_no_atendidos.append(pedido_obj)
                 planificacion_dict = {
                     **planificacion.__dict__,
                     "fmt_fecha": planificacion.fmt_fecha,
                     "fmt_fecha_creacion": planificacion.fmt_fecha_creacion,
-                    "pedidos_no_atendidos": [pna.pedido for pna in planificacion.pedidos_no_atendidos]
+                    "pedidos_no_atendidos": processed_pedidos_no_atendidos
                 }
                 return planificacion_dict
                 
-            # Add formatted dates to regular results
+            # processed_pedidos_no_atendidos will be an empty list.
             planificacion.__dict__["fmt_fecha"] = planificacion.fmt_fecha
             planificacion.__dict__["fmt_fecha_creacion"] = planificacion.fmt_fecha_creacion
+            planificacion.__dict__["pedidos_no_atendidos"] = processed_pedidos_no_atendidos
         return planificacion
 
 # Internal helper function

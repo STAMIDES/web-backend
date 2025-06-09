@@ -1,13 +1,12 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import random
 from faker import Faker
 import sys
 import os
 import argparse
 import requests
-import time
 from shapely.geometry import Point, shape, Polygon
 import json
 import pickle
@@ -271,6 +270,12 @@ def create_sample_data():
                             ventana_init += timedelta(minutes=random.randint(30, 90))
                             ventana_horaria_fin = ventana_init.time()
                     
+                    # Truncate seconds and milliseconds
+                    if isinstance(ventana_horaria_inicio, time):
+                        ventana_horaria_inicio = ventana_horaria_inicio.replace(second=0, microsecond=0)
+                    if isinstance(ventana_horaria_fin, time):
+                        ventana_horaria_fin = ventana_horaria_fin.replace(second=0, microsecond=0)
+
                     stop = Paradas(
                         tipo=random.choice(tipos).id,
                         id_pedido=order.id,
@@ -343,7 +348,7 @@ if __name__ == "__main__":
 
     if args.clean_db:
         print("Cleaning database...")
-        run_sql_script(db, "./delete_all_db.sql")
+        run_sql_script(db, "./scripts/delete_all_db.sql")
         print("Database cleaned.")
     else:
         print("Database not cleaned, adding more data..., run it with --clean_db to clean the database")

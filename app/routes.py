@@ -929,11 +929,12 @@ def add_planificacion(
             turnos: List[Turnos], 
             rutas: List[Rutas],
             pedidos_no_atendidos: List[int] = None,
+            pedidos_no_seleccionados: List[int] = None,
             token_payload: dict = Depends(JWTBearer())  # Move token_payload inside the function parameters
         ):
     try:
         user_id: int = token_payload.get("user_id")
-        nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos)
+        nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos, pedidos_no_seleccionados)
         return {"planificacion": nueva_planificacion}
     except Exception as e:
         log.error(traceback.format_exc())
