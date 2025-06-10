@@ -1,14 +1,14 @@
 import io
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from datetime import datetime, timedelta
-import models as m # Assuming models.py contains the Enum definitions
+from datetime import datetime, timedelta, time
+import models as model
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')
 from collections import defaultdict, Counter
 import numpy as np
 from io import BytesIO
@@ -89,7 +89,7 @@ def generate_planificacion_pdf(planificacion_data):
             tipo_item = getattr(visita, 'tipo_item', None)
             item = getattr(visita, 'item', None)
             
-            if tipo_item == m.TipoItemVisita.parada:
+            if tipo_item == model.TipoItemVisita.parada:
                 direccion = getattr(item, 'direccion', 'Parada no encontrada') if item else 'Parada no encontrada'
                 
                 # Get client info
@@ -144,7 +144,7 @@ def generate_planificacion_pdf(planificacion_data):
                 else:
                     accion = "No especificado"
             
-            elif tipo_item == m.TipoItemVisita.lugar_comun:
+            elif tipo_item == model.TipoItemVisita.lugar_comun:
                 direccion = getattr(item, 'nombre', 'Lugar común no encontrado') if item else 'Lugar común no encontrado'
                 
                 # Determine if it's start or end based on position in route
@@ -163,6 +163,46 @@ def generate_planificacion_pdf(planificacion_data):
                                 Paragraph(direccion, small_style),
                                 Paragraph(contacto, small_style)])
 
+        # Add driver's rest period if available
+        descanso_inicio = getattr(ruta, 'descanso_inicio', None)
+        descanso_fin = getattr(ruta, 'descanso_fin', None)
+        
+        if descanso_inicio and descanso_fin:
+            # Format rest times
+            descanso_inicio_str = format_time(descanso_inicio)
+            descanso_fin_str = format_time(descanso_fin)
+            
+            # Create rest period row with coffee emoji
+            rest_row = [
+                Paragraph(descanso_inicio_str, small_style),
+                Paragraph("Descanso del conductor", small_style),
+                Paragraph(f"Duración: {descanso_inicio_str} - {descanso_fin_str}", small_style),
+                Paragraph("", small_style)
+            ]
+            
+            # Find the correct position to insert the rest period based on time
+            inserted = False
+            for i in range(1, len(visitas_data)):
+                visita_hora_str = visitas_data[i][0].text
+                log.info(f"Comparing rest start {descanso_inicio_str} with visit time {visita_hora_str}")
+                # Convert string times to datetime.time objects for comparison
+                try:
+                    # Extract hours and minutes from the time string (assumed format 'HH:MM')
+                    h, m = map(int, visita_hora_str.split(':'))
+                    visita_hora = time(hour=h, minute=m)  # Use the imported time class instead of datetime.time
+                    
+                    if descanso_inicio < visita_hora:
+                        visitas_data.insert(i, rest_row)
+                        inserted = True
+                        break
+                except (ValueError, AttributeError):
+                    # If there's an error parsing the time, continue to next item
+                    continue
+            
+            # If not inserted (rest is after all visits), append to the end
+            if not inserted:
+                visitas_data.append(rest_row)
+        
         if len(visitas_data) > 1:
             # Adjust column widths to fit the new column
             visitas_table = Table(visitas_data, colWidths=[0.5*inch, 2.5*inch, 2.5*inch, 2*inch])
@@ -178,11 +218,119 @@ def generate_planificacion_pdf(planificacion_data):
                 ('ALIGN', (1,1), (2,-1), 'LEFT'), # Align address and action columns to the left
                 ('LEFTPADDING', (1,1), (2,-1), 6),
             ]))
+            
+            # Add special styling for the rest period row if it exists
+            if descanso_inicio and descanso_fin:
+                # Find the rest row index
+                for i in range(1, len(visitas_data)):
+                    if "Descanso del conductor" in visitas_data[i][1].text:
+                        # Apply special background color for the rest period row
+                        visitas_table.setStyle(TableStyle([
+                            ('BACKGROUND', (0,i), (-1,i), colors.wheat),
+                            ('TEXTCOLOR', (0,i), (-1,i), colors.brown),
+                        ]))
+                        break
+                        
             story.append(visitas_table)
         else:
             story.append(Paragraph("No hay visitas asignadas para esta ruta.", styles['Normal']))
 
         story.append(Spacer(1, 0.3*inch))
+
+    # Add section for unattended rides (pedidos_no_atendidos)
+    pedidos_no_atendidos = planificacion_data.get('pedidos_no_atendidos', []) if is_dict else getattr(planificacion_data, 'pedidos_no_atendidos', [])
+    
+    # Add a page break before the unattended rides section
+    story.append(PageBreak())
+    
+    if pedidos_no_atendidos:
+        story.append(Paragraph("Pedidos No Atendidos", styles['h1']))
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Split into two groups: dropped by motor vs dropped by creator
+        dropped_by_motor = [p for p in pedidos_no_atendidos if not getattr(p, 'no_enviado_al_optimizador', False)]
+        dropped_by_creator = [p for p in pedidos_no_atendidos if getattr(p, 'no_enviado_al_optimizador', False)]
+        
+        # Helper function to create dropped rides table
+        def create_dropped_rides_table(pedidos_list, title):
+            story.append(Paragraph(title, styles['h2']))
+            story.append(Spacer(1, 0.1*inch))
+            
+            if not pedidos_list:
+                story.append(Paragraph(f"No hay pedidos en esta categoría.", styles['Normal']))
+                story.append(Spacer(1, 0.2*inch))
+                return
+                
+            # Create table headers
+            dropped_data = [[
+                Paragraph("<b>ID Pedido</b>", small_style),
+                Paragraph("<b>Cliente</b>", small_style),
+                Paragraph("<b>Características</b>", small_style),
+                Paragraph("<b>Direcciones</b>", small_style)
+            ]]
+            
+            # Add rows for each unattended pedido
+            for pedido in pedidos_list:
+                # Get client info
+                cliente = getattr(pedido, 'cliente', None)
+                cliente_info = "No disponible"
+                caracteristicas_info = "Ninguna"
+                
+                if cliente:
+                    nombre = getattr(cliente, 'nombre', '')
+                    apellido = getattr(cliente, 'apellido', '')
+                    documento = getattr(cliente, 'documento', '')
+                    cliente_info = f"{nombre} {apellido} (Doc: {documento})"
+                    
+                    # Get client characteristics
+                    caracteristicas = getattr(cliente, 'caracteristicas', [])
+                    if caracteristicas:
+                        caracteristicas_names = [getattr(c, 'nombre', '') for c in caracteristicas]
+                        caracteristicas_info = ", ".join(caracteristicas_names)
+                
+                # Get paradas info
+                paradas = getattr(pedido, 'paradas', [])
+                paradas_info = "No disponible"
+                #ordernar por posicion_en_pedido
+                paradas = sorted(paradas, key=lambda p: getattr(p, 'posicion_en_pedido', 0)) if paradas else []
+                if paradas:
+                    paradas_direcciones = [getattr(p, 'direccion', 'Sin dirección') for p in paradas]
+                    paradas_info = "<br/>".join([f"- {dir}" for dir in paradas_direcciones])
+                
+                dropped_data.append([
+                    Paragraph(str(getattr(pedido, 'id', 'N/A')), small_style),
+                    Paragraph(cliente_info, small_style),
+                    Paragraph(caracteristicas_info, small_style),
+                    Paragraph(paradas_info, small_style)
+                ])
+            
+            # Create the table
+            dropped_table = Table(dropped_data, colWidths=[0.7*inch, 2*inch, 1.8*inch, 3*inch])
+            dropped_table.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+                ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0,0), (-1,0), 12),
+                ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+                ('GRID', (0,0), (-1,-1), 1, colors.black),
+                ('LEFTPADDING', (0,0), (-1,-1), 6),
+            ]))
+            
+            story.append(dropped_table)
+            story.append(Spacer(1, 0.2*inch))
+        
+        # Process pedidos dropped by the optimization engine
+        create_dropped_rides_table(dropped_by_motor, "No Atendidos por el Optimizador")
+        
+        # Process pedidos dropped by the creator
+        create_dropped_rides_table(dropped_by_creator, "No Enviados al Optimizador")
+    else:
+        story.append(Paragraph("Pedidos No Atendidos", styles['h1']))
+        story.append(Spacer(1, 0.1*inch))
+        story.append(Paragraph("No hay pedidos no atendidos en esta planificación.", styles['Normal']))
+        story.append(Spacer(1, 0.2*inch))
 
     doc.build(story)
     buffer.seek(0)
@@ -285,7 +433,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
                 elif hasattr(visita, '__dict__') and 'tipo_item' in visita.__dict__:
                     tipo_item = visita.__dict__['tipo_item']
                 
-                if tipo_item == m.TipoItemVisita.parada:
+                if tipo_item == model.TipoItemVisita.parada:
                     # Obtener item con acceso seguro
                     item = None
                     if hasattr(visita, 'item') and visita.item is not None:
