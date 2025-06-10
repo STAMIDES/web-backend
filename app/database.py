@@ -1541,7 +1541,7 @@ class Rutas(Base):
     planificacion = relationship('Planificaciones', back_populates='rutas')
     vehiculo = relationship('Vehiculos')
     chofer = relationship('Choferes')
-    visitas = relationship('Visitas', back_populates='ruta', order_by='Visitas.hora_llegada')
+    visitas = relationship('Visitas', back_populates='ruta', order_by='Visitas.hora_calculada_de_llegada')
 
 def add_ruta_db(ruta):
     with get_db() as db:
@@ -1595,8 +1595,8 @@ class Visitas(Base):
     id_item = Column(Integer, nullable=False)
     tipo_item = Column(SQLAEnum(m.TipoItemVisita), nullable=False)
     estado = Column(SQLAEnum(m.EstadoVisita), nullable=False)
-    hora_llegada = Column(Time, nullable=False)
-    hora_salida = Column(Time, nullable=False)
+    hora_calculada_de_llegada = Column(Time, nullable=False)
+    hora_pedida = Column(Time)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
     parada = relationship('Paradas', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == Paradas.id, Visitas.tipo_item == 'Parada')")

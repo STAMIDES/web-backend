@@ -71,18 +71,21 @@ def generate_planificacion_pdf(planificacion_data):
 
         # Visits Table
         visitas_data = [[Paragraph("<b>Hora</b>", small_style), 
+                         Paragraph("<b>HMax.</b>", small_style), 
                          Paragraph("<b>Acción</b>", small_style),
                          Paragraph("<b>Dirección / Lugar</b>", small_style),
                          Paragraph("<b>Contacto Usuario</b>", small_style)]]
         
         # Access visits using getattr to be safe
-        visitas = sorted(getattr(ruta, 'visitas', []), key=lambda v: getattr(v, 'hora_llegada', None) or datetime.min.time()) # Ensure visits are sorted by time
+        visitas = sorted(getattr(ruta, 'visitas', []), key=lambda v: getattr(v, 'hora_calculada_de_llegada', None) or datetime.min.time()) # Ensure visits are sorted by time
         
         # Dictionary to track client document appearances
         cliente_documento_count = defaultdict(int)
         
         for visita in visitas:
-            hora_llegada = format_time(getattr(visita, 'hora_llegada', None))
+            hora_calculada_de_llegada = format_time(getattr(visita, 'hora_calculada_de_llegada', None))
+            hora_pedida = format_time(getattr(visita, 'hora_pedida', None))
+
             direccion = ""
             accion = ""
             contacto = "N/A"  # Default contact info
@@ -158,7 +161,8 @@ def generate_planificacion_pdf(planificacion_data):
                 direccion = "Tipo de item desconocido"  
                 accion = "Acción desconocida"
 
-            visitas_data.append([Paragraph(hora_llegada, small_style), 
+            visitas_data.append([Paragraph(hora_calculada_de_llegada, small_style),
+                                 Paragraph(hora_pedida, small_style),
                                 Paragraph(accion, small_style),
                                 Paragraph(direccion, small_style),
                                 Paragraph(contacto, small_style)])
@@ -175,6 +179,7 @@ def generate_planificacion_pdf(planificacion_data):
             # Create rest period row with coffee emoji
             rest_row = [
                 Paragraph(descanso_inicio_str, small_style),
+                Paragraph("", small_style),  # Empty cell for hora_pedida
                 Paragraph("Descanso del conductor", small_style),
                 Paragraph(f"Duración: {descanso_inicio_str} - {descanso_fin_str}", small_style),
                 Paragraph("", small_style)
@@ -204,8 +209,8 @@ def generate_planificacion_pdf(planificacion_data):
                 visitas_data.append(rest_row)
         
         if len(visitas_data) > 1:
-            # Adjust column widths to fit the new column
-            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 2.5*inch, 2.5*inch, 2*inch])
+            # Adjust column widths to fit all 5 columns
+            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 0.5*inch, 2.5*inch, 2.5*inch, 1.5*inch])
             visitas_table.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.grey),
                 ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),

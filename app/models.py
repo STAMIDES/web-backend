@@ -155,8 +155,8 @@ class Visitas(BaseModel):
     id_ruta: Optional[int] = None
     id_item: int # id del lugar común o de la parada
     tipo_item: TipoItemVisita
-    hora_llegada: time
-    hora_salida: time
+    hora_calculada_de_llegada: time
+    hora_pedida: Optional[time] = None
     estado: EstadoVisita = EstadoVisita.pendiente
     observaciones: Optional[str] = None
 
