@@ -109,17 +109,17 @@ REQUESTS = [
     ]},
     {"anon_id": "Persona_08", "tipo": "ida_y_vuelta", "name": "Matías Nuñez", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "25 DE MAYO 177", "coords": (-34.9058556,-56.2055855),   "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "CENATT", "coords": (-34.8559056, -56.2111829), "ventana_inicio": "09:00", "ventana_fin": "15:00"},
+        {"pos": 2, "coords": (None, None), "direction": "CASTRO Y PENA", "coords": (-34.8528794, -56.2088529), "ventana_inicio": "09:00", "ventana_fin": "15:00"},
         {"pos": 3, "coords": (None, None), "direction": "25 DE MAYO 177", "coords": (-34.9058556,-56.2055855),   "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_09", "tipo": "ida_y_vuelta", "name": "Sheila Casuriaga", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "JOSE CASTRO 4424", "coords": (-34.863964,-56.2374515),       "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "CENATT", "coords": (-34.8559056, -56.2111829),      "ventana_inicio": "09:00", "ventana_fin": "12:00"},
+        {"pos": 2, "coords": (None, None), "direction": "CASTRO Y PENA", "coords": (-34.8528794, -56.2088529),      "ventana_inicio": "09:00", "ventana_fin": "12:00"},
         {"pos": 3, "coords": (None, None), "direction": "JOSE CASTRO 4424", "coords": (-34.863964,-56.2374515),       "ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_10", "tipo": "ida_y_vuelta", "name": "Lucía Vega", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "LUIS BATLLE BERRES 3975", "coords": (-34.8631794,-56.2189609),"ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "CENATT", "coords": (-34.8559056, -56.2111829),      "ventana_inicio": "09:00", "ventana_fin": "15:00"},
+        {"pos": 2, "coords": (None, None), "direction": "CASTRO Y PENA", "coords": (-34.8528794, -56.2088529),      "ventana_inicio": "09:00", "ventana_fin": "15:00"},
         {"pos": 3, "coords": (None, None), "direction": "LUIS BATLLE BERRES 3975", "coords": (-34.8631794,-56.2189609),"ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Persona_11", "tipo": "ida_y_vuelta", "name": "Cecilia Casanova", "paradas": [
