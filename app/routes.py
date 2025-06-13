@@ -950,8 +950,8 @@ def add_planificacion(
         ):
     try:
         user_id: int = token_payload.get("user_id")
-        nueva_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos, pedidos_no_seleccionados)
-        return {"planificacion": nueva_planificacion}
+        id_planificacion = db.crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos, pedidos_no_seleccionados)
+        return {"id_planificacion": id_planificacion}
     except Exception as e:
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")

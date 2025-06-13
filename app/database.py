@@ -1157,23 +1157,71 @@ class PedidosNoAtendidos(Base):
     planificacion = relationship('Planificaciones', back_populates='pedidos_no_atendidos')
     pedido = relationship('Pedidos')
 
+
+def _process_planificacion_object(planificacion: Planificaciones, db):
+    """
+    Toma un objeto Planificacion ya cargado y le aplica la lógica de negocio
+    y el enriquecimiento de datos necesarios para la respuesta de la API.
+    """
+    if not planificacion:
+        return None
+
+    # 1. Ordenar rutas y procesar geometría
+    planificacion.rutas = sorted(planificacion.rutas, key=lambda r: r.hora_inicio)
+    for ruta in planificacion.rutas:
+        if ruta.geometria and not isinstance(ruta.geometria, list):
+            try:
+                ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
+                ruta.geometria = ruta_geometria_geojson['coordinates']
+            except Exception as e:
+                log.info(f"Error processing geometria for ruta {ruta.id}: {e}")
+                ruta.geometria = None
+    
+    # 2. Calcular 'es_destino' para las paradas
+    destinos_de_pedidos = {}
+    for ruta in planificacion.rutas:
+        for visita in ruta.visitas:
+            # La relación ya está cargada, no hay nueva consulta
+            if visita.tipo_item == m.TipoItemVisita.parada:
+                parada = visita.parada
+                if parada.id_pedido not in destinos_de_pedidos:
+                    # Esta pequeña consulta es aceptable porque se hace por pedido, no por parada
+                    max_pos = db.query(func.max(Paradas.posicion_en_pedido)).filter(
+                        Paradas.id_pedido == parada.id_pedido
+                    ).scalar()
+                    destinos_de_pedidos[parada.id_pedido] = max_pos
+                
+                # Añadimos el atributo dinámico. Pydantic lo recogerá.
+                parada.es_destino = (parada.posicion_en_pedido == destinos_de_pedidos.get(parada.id_pedido))
+    # 3. Procesar pedidos no atendidos
+    processed_pedidos = []
+    if planificacion.pedidos_no_atendidos:
+        for pna in planificacion.pedidos_no_atendidos:
+            if pna.pedido:
+                # Añadimos el atributo dinámico al objeto Pedido
+                setattr(pna.pedido, 'no_enviado_al_optimizador', pna.no_enviado_al_optimizador)
+                processed_pedidos.append(pna.pedido)
+    setattr(planificacion, 'pedidos_no_atendidos_procesados', processed_pedidos)
+    return planificacion
+
 # Crea un planificación y dos turnos asociados
 def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendidos=None, pedidos_no_seleccionados=None):
-    with get_db() as db:
+    db = get_db()
+    try:
         planificacion.usuario_id = user_id
-        planificacion_obj = add_planificacion_db(planificacion)
+        planificacion_obj = add_planificacion_db(planificacion, db)
 
         # Crea dos turnos por defecto asociados a la planificación
         for t in turnos:
             t.id_planificacion = planificacion_obj.id
-            #turno = Turnos(id_planificacion=planificacion_obj.id, **t)
-            turno = add_turno_db(t)
+            add_turno_db(t, db)
+        
         for r in rutas: 
             r.id_planificacion = planificacion_obj.id
-            rutas_obj = add_ruta_db(r)
+            rutas_obj = add_ruta_db(r, db)
             for v in r.visitas:
                 v.id_ruta = rutas_obj.id
-                visita_obj = add_visita_db(v)
+                add_visita_db(v, db)
         if pedidos_no_atendidos:
             for pedido_id in pedidos_no_atendidos:
                 pedido_no_atendido = PedidosNoAtendidos(
@@ -1181,7 +1229,7 @@ def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendi
                     id_pedido=pedido_id
                 )
                 db.add(pedido_no_atendido)
-            db.commit()
+        
         if pedidos_no_seleccionados:
             for pedido_id in pedidos_no_seleccionados:
                 pedido_no_seleccionado = PedidosNoAtendidos(
@@ -1190,13 +1238,22 @@ def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendi
                     no_enviado_al_optimizador=True # el creador de la planificacion no envio estos pedidos al optimizador,
                 )                                  # fueron dejados sin atender intencionalmente                       
                 db.add(pedido_no_seleccionado)
-            db.commit()
-        new_planificacion_id = planificacion_obj.id
-        db.expunge(planificacion_obj) 
-        return get_planificacion_db2(new_planificacion_id)
+        
+        db.commit()
+        return planificacion_obj.id
+    except Exception as e:
+        db.rollback()
+        raise e
+    finally:
+        db.close()
 
-def add_planificacion_db(planificacion):
-    with get_db() as db:
+def add_planificacion_db(planificacion, db=None):
+    should_close = False
+    if db is None:
+        db = get_db()
+        should_close = True
+    
+    try:
         log.info('Creando planificación: %s', planificacion)
         # Verificar si la planificación ya existe
         existing_planificacion = db.query(Planificaciones).filter(
@@ -1206,15 +1263,27 @@ def add_planificacion_db(planificacion):
             planificacion.definitiva = False
             if existing_planificacion.definitiva:
                 db.query(Planificaciones).filter(Planificaciones.id == existing_planificacion.id).update({"definitiva": False})
-                db.commit()
+                if should_close:
+                    db.commit()
         else:
             planificacion.definitiva = True
         # Crear la planificación
         planificacion_obj = Planificaciones(**planificacion.dict())
         db.add(planificacion_obj)
-        db.commit()
-        db.refresh(planificacion_obj)
+        if should_close:
+            db.commit()
+        else:
+            db.flush()
+        if should_close:
+            db.refresh(planificacion_obj)
         return planificacion_obj
+    except Exception as e:
+        if should_close:
+            db.rollback()
+        raise e
+    finally:
+        if should_close:
+            db.close()
 
 # En tu archivo database.py
 
@@ -1237,54 +1306,8 @@ def get_planificacion_db2(id_planificacion: int):
             selectinload(Planificaciones.pedidos_no_atendidos).selectinload(PedidosNoAtendidos.pedido).selectinload(Pedidos.paradas).selectinload(Paradas.tipo_parada),
         ).filter(Planificaciones.id == id_planificacion).first()
 
-        if not planificacion:
-            return None
+        return _process_planificacion_object(planificacion, db)
 
-        # --- Lógica para añadir datos dinámicos POST-CONSULTA ---
-        # No modificamos la estructura, solo añadimos atributos simples.
-        
-        # 1. Ordenar rutas y procesar geometría
-        planificacion.rutas = sorted(planificacion.rutas, key=lambda r: r.hora_inicio)
-        for ruta in planificacion.rutas:
-            if ruta.geometria and not isinstance(ruta.geometria, list):
-                try:
-                    ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
-                    ruta.geometria = ruta_geometria_geojson['coordinates']
-                except Exception as e:
-                    log.info(f"Error processing geometria for ruta {ruta.id}: {e}")
-                    ruta.geometria = None
-        
-        # 2. Calcular 'es_destino' para las paradas
-        destinos_de_pedidos = {}
-        for ruta in planificacion.rutas:
-            for visita in ruta.visitas:
-                # La relación ya está cargada, no hay nueva consulta
-                if visita.tipo_item == m.TipoItemVisita.parada:
-                    parada = visita.parada
-                    if parada.id_pedido not in destinos_de_pedidos:
-                        # Esta pequeña consulta es aceptable porque se hace por pedido, no por parada
-                        max_pos = db.query(func.max(Paradas.posicion_en_pedido)).filter(
-                            Paradas.id_pedido == parada.id_pedido
-                        ).scalar()
-                        destinos_de_pedidos[parada.id_pedido] = max_pos
-                    
-                    # Añadimos el atributo dinámico. Pydantic lo recogerá.
-                    parada.es_destino = (parada.posicion_en_pedido == destinos_de_pedidos.get(parada.id_pedido))
-                    #visita.item = parada
-                #elif visita.tipo_item == m.TipoItemVisita.lugar_comun:
-                    #visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
-        # 3. Procesar pedidos no atendidos
-        processed_pedidos = []
-        if planificacion.pedidos_no_atendidos:
-            for pna in planificacion.pedidos_no_atendidos:
-                if pna.pedido:
-                    # Añadimos el atributo dinámico al objeto Pedido
-                    setattr(pna.pedido, 'no_enviado_al_optimizador', pna.no_enviado_al_optimizador)
-                    processed_pedidos.append(pna.pedido)
-        setattr(planificacion, 'pedidos_no_atendidos_procesados', processed_pedidos)
-        # La función ahora devuelve el objeto SQLAlchemy enriquecido.
-        # Ya no construye un diccionario.
-        return planificacion
 # Obtiene una planificación con sus turnos y rutas asociados, y las visitas asociadas a las rutas,
 # paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
 def get_planificacion_db(id_planificacion: int):
@@ -1569,13 +1592,28 @@ class Turnos(Base):
     hora_fin = Column(Time, nullable=False)
     planificacion = relationship('Planificaciones', back_populates='turnos')
 
-def add_turno_db(turno):
-    with get_db() as db:
+def add_turno_db(turno, db=None):
+    should_close = False
+    if db is None:
+        db = get_db()
+        should_close = True
+    
+    try:
         turno_obj = Turnos(**turno.dict())
         db.add(turno_obj)
-        db.commit()
-        db.refresh(turno_obj)
+        if should_close:
+            db.commit()
+            db.refresh(turno_obj)
+        else:
+            db.flush()
         return turno_obj
+    except Exception as e:
+        if should_close:
+            db.rollback()
+        raise e
+    finally:
+        if should_close:
+            db.close()
     
 def get_turno_db(id_turno):
     with get_db() as db:
@@ -1619,8 +1657,13 @@ class Rutas(Base):
     chofer = relationship('Choferes')
     visitas = relationship('Visitas', back_populates='ruta', order_by='Visitas.hora_calculada_de_llegada')
 
-def add_ruta_db(ruta):
-    with get_db() as db:
+def add_ruta_db(ruta, db=None):
+    should_close = False
+    if db is None:
+        db = get_db()
+        should_close = True
+    
+    try:
         geometria_wkt = WKTElement(LineString(ruta.geometria).wkt, srid=4326)
         ruta_obj = Rutas(
             id_planificacion=ruta.id_planificacion,
@@ -1634,10 +1677,20 @@ def add_ruta_db(ruta):
             descanso_fin=getattr(ruta, 'descanso_fin', None)
         )
         db.add(ruta_obj)
-        db.commit()
-        db.refresh(ruta_obj)
+        if should_close:
+            db.commit()
+            db.refresh(ruta_obj)
+        else:
+            db.flush()
         return ruta_obj
-    
+    except Exception as e:
+        if should_close:
+            db.rollback()
+        raise e
+    finally:
+        if should_close:
+            db.close()
+
 def get_ruta_db(id_ruta):
     with get_db() as db:
         return db.query(Rutas).filter(Rutas.id_ruta == id_ruta).first()
@@ -1679,13 +1732,28 @@ class Visitas(Base):
     lugar_comun = relationship('LugaresComunes', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == LugaresComunes.id, Visitas.tipo_item == 'lugar_comun')")
 
     
-def add_visita_db(visita):
-    with get_db() as db:
+def add_visita_db(visita, db=None):
+    should_close = False
+    if db is None:
+        db = get_db()
+        should_close = True
+    
+    try:
         visita_obj = Visitas(**visita.dict())
         db.add(visita_obj)
-        db.commit()
-        db.refresh(visita_obj)
+        if should_close:
+            db.commit()
+            db.refresh(visita_obj)
+        else:
+            db.flush()
         return visita_obj
+    except Exception as e:
+        if should_close:
+            db.rollback()
+        raise e
+    finally:
+        if should_close:
+            db.close()
     
 def get_visita_db(id_visita):
     with get_db() as db:
