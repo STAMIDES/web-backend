@@ -2,7 +2,7 @@ from sqlite3 import Date
 from sqlalchemy import create_engine, Column, ForeignKey,Integer, cast, func, String, Float, DateTime, Time, Boolean, Enum as SQLAEnum, or_, distinct # type: ignore
 from enum import Enum
 from sqlalchemy.ext.declarative import declarative_base # type: ignore
-from sqlalchemy.orm import sessionmaker, joinedload, relationship # type: ignore
+from sqlalchemy.orm import selectinload, sessionmaker, joinedload, relationship # type: ignore
 from geoalchemy2 import Geometry # type: ignore
 from datetime import datetime, timedelta, time
 from shapely.geometry import LineString
@@ -1191,7 +1191,9 @@ def crear_planificacion(user_id, planificacion, turnos, rutas, pedidos_no_atendi
                 )                                  # fueron dejados sin atender intencionalmente                       
                 db.add(pedido_no_seleccionado)
             db.commit()
-        return get_planificacion_db(planificacion_obj.id)
+        new_planificacion_id = planificacion_obj.id
+        db.expunge(planificacion_obj) 
+        return get_planificacion_db2(new_planificacion_id)
 
 def add_planificacion_db(planificacion):
     with get_db() as db:
@@ -1214,6 +1216,75 @@ def add_planificacion_db(planificacion):
         db.refresh(planificacion_obj)
         return planificacion_obj
 
+# En tu archivo database.py
+
+# Importa los modelos de SQLAlchemy que necesites
+def get_planificacion_db2(id_planificacion: int):
+    with get_db() as db:
+        # Consulta ÚNICA y EFICIENTE para cargar todo lo que necesitamos
+        planificacion = db.query(Planificaciones).options(
+            # Carga ansiosa de relaciones para evitar N+1 queries
+            selectinload(Planificaciones.turnos),
+            selectinload(Planificaciones.creado_por),
+            selectinload(Planificaciones.rutas).selectinload(Rutas.vehiculo),
+            selectinload(Planificaciones.rutas).selectinload(Rutas.chofer),
+            # La magia para la relación polimórfica
+            selectinload(Planificaciones.rutas).selectinload(Rutas.visitas).selectinload(Visitas.parada).selectinload(Paradas.tipo_parada),
+            selectinload(Planificaciones.rutas).selectinload(Rutas.visitas).selectinload(Visitas.parada).selectinload(Paradas.pedido).selectinload(Pedidos.cliente).selectinload(Clientes.caracteristicas),
+            selectinload(Planificaciones.rutas).selectinload(Rutas.visitas).selectinload(Visitas.lugar_comun),
+            # Carga de pedidos no atendidos
+            selectinload(Planificaciones.pedidos_no_atendidos).selectinload(PedidosNoAtendidos.pedido).selectinload(Pedidos.cliente).selectinload(Clientes.caracteristicas),
+            selectinload(Planificaciones.pedidos_no_atendidos).selectinload(PedidosNoAtendidos.pedido).selectinload(Pedidos.paradas).selectinload(Paradas.tipo_parada),
+        ).filter(Planificaciones.id == id_planificacion).first()
+
+        if not planificacion:
+            return None
+
+        # --- Lógica para añadir datos dinámicos POST-CONSULTA ---
+        # No modificamos la estructura, solo añadimos atributos simples.
+        
+        # 1. Ordenar rutas y procesar geometría
+        planificacion.rutas = sorted(planificacion.rutas, key=lambda r: r.hora_inicio)
+        for ruta in planificacion.rutas:
+            if ruta.geometria and not isinstance(ruta.geometria, list):
+                try:
+                    ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
+                    ruta.geometria = ruta_geometria_geojson['coordinates']
+                except Exception as e:
+                    log.info(f"Error processing geometria for ruta {ruta.id}: {e}")
+                    ruta.geometria = None
+        
+        # 2. Calcular 'es_destino' para las paradas
+        destinos_de_pedidos = {}
+        for ruta in planificacion.rutas:
+            for visita in ruta.visitas:
+                # La relación ya está cargada, no hay nueva consulta
+                if visita.tipo_item == m.TipoItemVisita.parada:
+                    parada = visita.parada
+                    if parada.id_pedido not in destinos_de_pedidos:
+                        # Esta pequeña consulta es aceptable porque se hace por pedido, no por parada
+                        max_pos = db.query(func.max(Paradas.posicion_en_pedido)).filter(
+                            Paradas.id_pedido == parada.id_pedido
+                        ).scalar()
+                        destinos_de_pedidos[parada.id_pedido] = max_pos
+                    
+                    # Añadimos el atributo dinámico. Pydantic lo recogerá.
+                    parada.es_destino = (parada.posicion_en_pedido == destinos_de_pedidos.get(parada.id_pedido))
+                    #visita.item = parada
+                #elif visita.tipo_item == m.TipoItemVisita.lugar_comun:
+                    #visita.item = db.query(LugaresComunes).filter(LugaresComunes.id == visita.id_item).first()
+        # 3. Procesar pedidos no atendidos
+        processed_pedidos = []
+        if planificacion.pedidos_no_atendidos:
+            for pna in planificacion.pedidos_no_atendidos:
+                if pna.pedido:
+                    # Añadimos el atributo dinámico al objeto Pedido
+                    setattr(pna.pedido, 'no_enviado_al_optimizador', pna.no_enviado_al_optimizador)
+                    processed_pedidos.append(pna.pedido)
+        setattr(planificacion, 'pedidos_no_atendidos_procesados', processed_pedidos)
+        # La función ahora devuelve el objeto SQLAlchemy enriquecido.
+        # Ya no construye un diccionario.
+        return planificacion
 # Obtiene una planificación con sus turnos y rutas asociados, y las visitas asociadas a las rutas,
 # paradas o lugares comunes asociados a las visitas, vehiculos y choferes asociados a las rutas
 def get_planificacion_db(id_planificacion: int):
@@ -1242,9 +1313,14 @@ def get_planificacion_db(id_planificacion: int):
             destinos_de_pedidos = {}
             # Completar las visitas con sus detalles
             for ruta in planificacion.rutas:
-                if ruta.geometria:
-                    ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
-                    ruta.geometria = ruta_geometria_geojson['coordinates']
+                if ruta.geometria and not isinstance(ruta.geometria, list):
+                    try:
+                        ruta_geometria_geojson = mapping(to_shape(ruta.geometria))
+                        ruta.geometria = ruta_geometria_geojson['coordinates']
+                        log.info('Geometria procesada correctamente')
+                    except Exception as e:
+                        log.info(f"Error processing geometria for ruta {ruta.id}: {e}")
+                        ruta.geometria = None 
                 for visita in ruta.visitas:
                     if visita.tipo_item == m.TipoItemVisita.parada:
                         parada = db.query(Paradas).options(
