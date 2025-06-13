@@ -342,11 +342,12 @@ def run_sql_script(session, sql_file_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--clean_db", action="store_true", help="Clean the DB before adding sample data")
+    parser.add_argument("--only_clean_db", action="store_true", help="Only clean the DB without adding sample data")
     args = parser.parse_args()
 
     db = SessionLocal()
 
-    if args.clean_db:
+    if args.clean_db or args.only_clean_db:
         print("Cleaning database...")
         run_sql_script(db, "./scripts/delete_all_db.sql")
         print("Database cleaned.")
@@ -354,5 +355,9 @@ if __name__ == "__main__":
         print("Database not cleaned, adding more data..., run it with --clean_db to clean the database")
 
     db.close()
-    create_sample_data()
-    print("Sample data has been generated successfully.")
+    
+    if not args.only_clean_db:
+        create_sample_data()
+        print("Sample data has been generated successfully.")
+    else:
+        print("Database cleaning completed. No sample data was generated.")
