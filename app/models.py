@@ -218,6 +218,11 @@ class ParadaSchema(BaseModel):
     tipo_parada: Optional[TipoParadaSchema] = None
     es_destino: bool = False
     id_pedido: Optional[int] = None 
+    pedido_tipo: Optional[TipoPedido] = None 
+    cliente_nombre: Optional[str] = None
+    cliente_apellido: Optional[str] = None
+    cliente_documento: Optional[int] = None
+    cliente_caracteristicas: Optional[List] = None
     model_config = ConfigDict(from_attributes=True)
 
 class LugarComunSchema(BaseModel):

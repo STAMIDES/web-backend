@@ -1185,7 +1185,7 @@ def _process_planificacion_object(planificacion: Planificaciones, db):
                 log.info(f"Error processing geometria for ruta {ruta.id}: {e}")
                 ruta.geometria = None
     
-    # 2. Calcular 'es_destino' para las paradas
+    # 2. Calcular 'es_destino' para las paradas y añadir información del pedido y cliente
     destinos_de_pedidos = {}
     for ruta in planificacion.rutas:
         for visita in ruta.visitas:
@@ -1201,6 +1201,35 @@ def _process_planificacion_object(planificacion: Planificaciones, db):
                 
                 # Añadimos el atributo dinámico. Pydantic lo recogerá.
                 parada.es_destino = (parada.posicion_en_pedido == destinos_de_pedidos.get(parada.id_pedido))
+                
+                # Añadir información del pedido y cliente a la parada
+                if parada.pedido:
+                    # Información del pedido
+                    parada.pedido_tipo = parada.pedido.tipo
+                    
+                    # Información del cliente
+                    if parada.pedido.cliente:
+                        parada.cliente_nombre = parada.pedido.cliente.nombre
+                        parada.cliente_apellido = parada.pedido.cliente.apellido
+                        parada.cliente_documento = parada.pedido.cliente.documento
+                        
+                        # Características del cliente
+                        if parada.pedido.cliente.caracteristicas:
+                            parada.cliente_caracteristicas = [carac.nombre for carac in parada.pedido.cliente.caracteristicas]
+                        else:
+                            parada.cliente_caracteristicas = []
+                    else:
+                        parada.cliente_nombre = None
+                        parada.cliente_apellido = None
+                        parada.cliente_documento = None
+                        parada.cliente_caracteristicas = []
+                else:
+                    parada.pedido_tipo = None
+                    parada.cliente_nombre = None
+                    parada.cliente_apellido = None
+                    parada.cliente_documento = None
+                    parada.cliente_caracteristicas = []
+    
     # 3. Procesar pedidos no atendidos
     processed_pedidos = []
     if planificacion.pedidos_no_atendidos:

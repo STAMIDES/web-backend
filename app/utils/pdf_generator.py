@@ -509,7 +509,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
     from reportlab.lib import colors as report_colors
 
     general_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), report_colors.darkblue),
+        ('BACKGROUND', (0,0), (-1,0), report_colors.dodgerblue),
         ('TEXTCOLOR', (0,0), (-1,0), report_colors.whitesmoke),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
@@ -537,7 +537,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
 
 
         tipos_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), report_colors.darkblue),
+            ('BACKGROUND', (0,0), (-1,0), report_colors.dodgerblue),
             ('TEXTCOLOR', (0,0), (-1,0), report_colors.whitesmoke),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
