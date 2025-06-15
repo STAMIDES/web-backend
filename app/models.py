@@ -290,6 +290,8 @@ class RutaSchema(BaseModel):
     hora_fin: time
     geometria: Optional[List] = None # Geometría ya procesada
     observaciones: Optional[str] = None
+    descanso_inicio: Optional[time] = None
+    descanso_fin: Optional[time] = None
     vehiculo: VehiculoSchema
     chofer: ChoferSchema
     visitas: List[VisitaSchema] = []
