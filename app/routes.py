@@ -903,17 +903,6 @@ def download_planificacion_pdf(start_date: str, end_date: str):
         log.error(f"Error generating or downloading PDF for planifications {start_date} - {end_date}: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Error al generar el PDF de la planificación.")
 
-# @planificaciones_router.get("/{id_planificacion}", dependencies=[Depends(JWTBearer())])
-# def get_planificacion(id_planificacion: int):
-#     try:
-#         planificacion = db.get_planificacion_db(id_planificacion)
-#         if not planificacion:
-#             raise HTTPException(status_code=404, detail="Planificación no encontrada.")
-#         return {"planificacion": planificacion}
-#     except Exception as e:
-#         log.error(traceback.format_exc())
-#         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
-
 @planificaciones_router.get("/{id_planificacion}", 
                             response_model=PlanificacionResponse,
                             dependencies=[Depends(JWTBearer())])
