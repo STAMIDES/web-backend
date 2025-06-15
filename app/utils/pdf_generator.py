@@ -6,6 +6,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from datetime import datetime, timedelta, time
 import models as model
+from database import get_pedido_and_cliente_db
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
@@ -33,6 +34,9 @@ def generate_planificacion_pdf(planificacion_data):
     # Create a smaller font style for the table content
     small_style = ParagraphStyle('Small', parent=styles['Normal'], fontSize=8)
     story = []
+
+    # Cache for pedidos to avoid redundant database calls
+    pedidos_cache = {}
 
     # Title - Handle both dict and object access
     is_dict = isinstance(planificacion_data, dict)
@@ -90,16 +94,24 @@ def generate_planificacion_pdf(planificacion_data):
             accion = ""
             contacto = "N/A"  # Default contact info
             tipo_item = getattr(visita, 'tipo_item', None)
-            item = getattr(visita, 'item', None)
-            
             if tipo_item == model.TipoItemVisita.parada:
+                item = getattr(visita, 'parada', None)
                 direccion = getattr(item, 'direccion', 'Parada no encontrada') if item else 'Parada no encontrada'
                 
-                # Get client info
-                pedido = getattr(item, 'pedido', None)
+                id_pedido = getattr(item, 'id_pedido', None)
+                pedido = None
                 cliente = None
-                if pedido:
-                    cliente = getattr(pedido, 'cliente', None)
+                if id_pedido:
+                    # Check cache first
+                    if id_pedido in pedidos_cache:
+                        pedido = pedidos_cache[id_pedido]
+                    else:
+                        # Get from database and cache it
+                        pedido = get_pedido_and_cliente_db(id_pedido)
+                        pedidos_cache[id_pedido] = pedido
+                    
+                    if pedido:
+                        cliente = getattr(pedido, 'cliente', None)
                 
                 if cliente:
                     nombre = getattr(cliente, 'nombre', '')
@@ -148,8 +160,9 @@ def generate_planificacion_pdf(planificacion_data):
                     accion = "No especificado"
             
             elif tipo_item == model.TipoItemVisita.lugar_comun:
+                item = getattr(visita, 'lugar_comun', None)
                 direccion = getattr(item, 'nombre', 'Lugar común no encontrado') if item else 'Lugar común no encontrado'
-                
+                direccion += f"<br/> ({getattr(item, 'direccion', 'Sin dirección')})" if item else ''
                 # Determine if it's start or end based on position in route
                 if visitas.index(visita) == 0:
                     accion = "Comienzo"
@@ -179,10 +192,10 @@ def generate_planificacion_pdf(planificacion_data):
             # Create rest period row with coffee emoji
             rest_row = [
                 Paragraph(descanso_inicio_str, small_style),
-                Paragraph("", small_style),  # Empty cell for hora_pedida
+                Paragraph("---", small_style),  # Empty cell for hora_pedida
                 Paragraph("Descanso del conductor", small_style),
                 Paragraph(f"Duración: {descanso_inicio_str} - {descanso_fin_str}", small_style),
-                Paragraph("", small_style)
+                Paragraph("---", small_style)
             ]
             
             # Find the correct position to insert the rest period based on time
@@ -243,7 +256,7 @@ def generate_planificacion_pdf(planificacion_data):
         story.append(Spacer(1, 0.3*inch))
 
     # Add section for unattended rides (pedidos_no_atendidos)
-    pedidos_no_atendidos = planificacion_data.get('pedidos_no_atendidos', []) if is_dict else getattr(planificacion_data, 'pedidos_no_atendidos', [])
+    pedidos_no_atendidos = planificacion_data.get('pedidos_no_atendidos_procesados', []) if is_dict else getattr(planificacion_data, 'pedidos_no_atendidos_procesados', [])
     
     # Add a page break before the unattended rides section
     story.append(PageBreak())
@@ -496,7 +509,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
     from reportlab.lib import colors as report_colors
 
     general_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), report_colors.darkblue),
+        ('BACKGROUND', (0,0), (-1,0), report_colors.dodgerblue),
         ('TEXTCOLOR', (0,0), (-1,0), report_colors.whitesmoke),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
@@ -524,7 +537,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
 
 
         tipos_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), report_colors.darkblue),
+            ('BACKGROUND', (0,0), (-1,0), report_colors.dodgerblue),
             ('TEXTCOLOR', (0,0), (-1,0), report_colors.whitesmoke),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
