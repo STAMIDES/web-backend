@@ -217,6 +217,7 @@ class ParadaSchema(BaseModel):
     observaciones: Optional[str] = None
     tipo_parada: Optional[TipoParadaSchema] = None
     es_destino: bool = False
+    id_pedido: Optional[int] = None 
     model_config = ConfigDict(from_attributes=True)
 
 class LugarComunSchema(BaseModel):
@@ -245,7 +246,7 @@ class VisitaSchema(BaseModel):
     hora_calculada_de_llegada: time
     hora_pedida: Optional[time] = None
     observaciones: Optional[str] = None
-    
+    tipo_item: TipoItemVisita
     # Campos que necesitamos para la lógica, pero que no queremos en el JSON final.
     # Los obtenemos del objeto SQLAlchemy usando un alias.
     parada: Optional[ParadaSchema] = Field(None, exclude=True)

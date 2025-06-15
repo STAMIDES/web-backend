@@ -919,7 +919,7 @@ def download_planificacion_pdf(start_date: str, end_date: str):
                             dependencies=[Depends(JWTBearer())])
 def get_planificacion(id_planificacion: int):
     try:
-        planificacion_obj = db.get_planificacion_db2(id_planificacion)
+        planificacion_obj = db.get_planificacion_db(id_planificacion)
         
         if not planificacion_obj:
             raise HTTPException(status_code=404, detail="Planificación no encontrada.")
