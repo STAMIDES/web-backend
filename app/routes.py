@@ -20,7 +20,7 @@ log = logging.getLogger("routes")
 # region Usuarios
 usuarios_router = APIRouter()
 
-@usuarios_router.get("/", dependencies=[Depends(JWTBearer())])
+@usuarios_router.get("", dependencies=[Depends(JWTBearer())])
 def get_usuarios(offset: int = 0, limit: int = 100, search: str = ''):
     try:
         usuarios, cantidad = db.get_usuarios(offset=offset, limit=limit, search=search)
@@ -138,12 +138,12 @@ def login(request: LoginRequest, response: Response):
             httponly=True,
             secure=True,
             samesite='lax',
-            max_age=3600  # 1 hour
+            max_age=24*3600  # 1 day
         )
         response.set_cookie(
             key="refresh_token", 
             value=refresh_token,
-            path='/usuarios/logout',
+            path='/usuarios/logout', # la precisamos para el logout y para el  refresh, por eso el endpoint de refresh tamb tiene /logout
             httponly=True,
             secure=True,
             samesite='lax',
@@ -182,7 +182,7 @@ def refresh_token(request: Request, response: Response):
         httponly=True,
         secure=True,
         samesite='lax',
-        max_age=3600  # 1 day
+        max_age=24*3600  # 1 day
     )
     
     return {"message": "Token refreshed successfully"}
@@ -194,7 +194,7 @@ def logout(request: Request, response: Response):
         if refresh_token:
             db.logout(refresh_token)
         response.delete_cookie(key="access_token")
-        response.delete_cookie(key="refresh_token", path='/usuarios/refresh')
+        response.delete_cookie(key="refresh_token", path='/usuarios/logout')
         return {"message": "Usuario desconectado correctamente"}
     except Exception as e:
         log.error(traceback.format_exc())
@@ -292,7 +292,7 @@ def get_cliente_completo(id: int, completo = False):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.get("/", dependencies=[Depends(JWTBearer())])
+@clientes_router.get("", dependencies=[Depends(JWTBearer())])
 def get_clientes(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         log.info("Obteniendo clientes")
@@ -619,7 +619,7 @@ def get_vehiculo(id_vehiculo: int):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@vehiculos_router.get("/", dependencies=[Depends(JWTBearer())])
+@vehiculos_router.get("", dependencies=[Depends(JWTBearer())])
 def get_vehiculos(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         vehiculos, cantidad = db.get_vehiculos_db(limit, offset, search)
@@ -740,7 +740,7 @@ def get_chofer(id: int):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@choferes_router.get("/", dependencies=[Depends(JWTBearer())])
+@choferes_router.get("", dependencies=[Depends(JWTBearer())])
 def get_choferes(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         choferes, cantidad = db.get_choferes_db(limit, offset, search)
@@ -809,7 +809,7 @@ def get_lugar_comun(id_lugar: int):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
     
-@lugares_comunes_router.get("/", dependencies=[Depends(JWTBearer())])
+@lugares_comunes_router.get("", dependencies=[Depends(JWTBearer())])
 def get_lugares_comunes(limit: int = 100, offset: int = 0, search: str = ''):
     try:
         lugares, cantidad = db.get_lugares_comunes_db(limit, offset, search)
