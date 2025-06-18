@@ -158,7 +158,7 @@ NOASIGNADOS_NAME_ALIAS_LIST = [
     {"name": "Leonardo Fernández",        "alias": "Usuario_26", "direction": "SANTA LUCIA 4451", "coords": (-34.8517945,-56.2259483)},
     {"name": "Washington González",       "alias": "Usuario_27", "direction": "CEIBAL Y PANDO"},
     {"name": "Lucía Barboza",             "alias": "Usuario_28", "direction": "CARLOS DE LA VEGA 5514", "coords": (-34.843499,-56.2475771)},
-    {"name": "Agustín Villavedra Ferrari","alias": "Usuario_29", "direction": "MICHIGAN 1538", "coords": (-34.8932961,-56.0995063)},
+    {"name": "Agustín Villavedra","alias": "Usuario_29", "direction": "MICHIGAN 1538", "coords": (-34.8932961,-56.0995063)},
     {"name": "Felisa González",           "alias": "Usuario_30", "direction": "L.A.DE HERRERA 1975/001"},
     {"name": "Mateo Techera",             "alias": "Usuario_31", "direction": "MIDES 18 DE JULIO PJE H 1681"},
 ]
@@ -211,7 +211,7 @@ NO_ASIGNADOS_REQUESTS = [
         {"pos": 1, "coords": (None, None), "direction": "CARLOS DE LA VEGA 5514", "coords": (-34.843499,-56.2475771),"ventana_inicio": None,   "ventana_fin": None},
         {"pos": 2, "coords": (None, None), "direction": "JOAQUIN REQUENA 3010", "coords": (-34.8719449,-56.173083),   "ventana_inicio": "19:20", "ventana_fin": None},
     ]},
-    {"name": "Agustín Villavedra Ferrari","anon_id": "Usuario_29", "tipo": "solo_ida", "paradas": [#-34.891740000536004, -56.06200370935419
+    {"name": "Agustín Villavedra","anon_id": "Usuario_29", "tipo": "solo_ida", "paradas": [#-34.891740000536004, -56.06200370935419
         {"pos": 1, "coords": (None, None), "direction": "FERRARI", "coords": (-34.8919893,-56.0626356),        "ventana_inicio": None,   "ventana_fin": None},
         {"pos": 2, "coords": (None, None), "direction": "MICHIGAN 1538", "coords": (-34.8932961,-56.0995063),            "ventana_inicio": "18:00", "ventana_fin": None},
     ]},
