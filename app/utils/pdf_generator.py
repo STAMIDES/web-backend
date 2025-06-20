@@ -305,7 +305,7 @@ def generate_planificacion_pdf(planificacion_data):
             dropped_data = [[
                 Paragraph("<b>ID Pedido</b>", small_style),
                 Paragraph("<b>Cliente</b>", small_style),
-                Paragraph("<b>Características</b>", small_style),
+                Paragraph("<b>Contacto Usuario</b>", small_style),
                 Paragraph("<b>Direcciones</b>", small_style)
             ]]
             
@@ -314,7 +314,7 @@ def generate_planificacion_pdf(planificacion_data):
                 # Get client info
                 cliente = getattr(pedido, 'cliente', None)
                 cliente_info = "No disponible"
-                caracteristicas_info = "Ninguna"
+                contacto_info = "N/A"
                 
                 if cliente:
                     nombre = getattr(cliente, 'nombre', '')
@@ -322,11 +322,14 @@ def generate_planificacion_pdf(planificacion_data):
                     documento = getattr(cliente, 'documento', '')
                     cliente_info = f"{nombre} {apellido} (Doc: {documento})"
                     
-                    # Get client characteristics
-                    caracteristicas = getattr(cliente, 'caracteristicas', [])
-                    if caracteristicas:
-                        caracteristicas_names = [getattr(c, 'nombre', '') for c in caracteristicas]
-                        caracteristicas_info = ", ".join(caracteristicas_names)
+                    # Get client contact information
+                    telefono = getattr(cliente, 'telefono', None)
+                    email = getattr(cliente, 'email', None)
+                    
+                    if telefono:
+                        contacto_info = f"tel: {telefono}"
+                    elif email:
+                        contacto_info = f"mail: {email}"
                 
                 # Get paradas info
                 paradas = getattr(pedido, 'paradas', [])
@@ -340,7 +343,7 @@ def generate_planificacion_pdf(planificacion_data):
                 dropped_data.append([
                     Paragraph(str(getattr(pedido, 'id', 'N/A')), small_style),
                     Paragraph(cliente_info, small_style),
-                    Paragraph(caracteristicas_info, small_style),
+                    Paragraph(contacto_info, small_style),
                     Paragraph(paradas_info, small_style)
                 ])
             
