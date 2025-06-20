@@ -6,6 +6,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from datetime import datetime, timedelta, time
 import models as model
+from database import get_pedido_and_cliente_db
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
@@ -33,6 +34,9 @@ def generate_planificacion_pdf(planificacion_data):
     # Create a smaller font style for the table content
     small_style = ParagraphStyle('Small', parent=styles['Normal'], fontSize=8)
     story = []
+
+    # Cache for pedidos to avoid redundant database calls
+    pedidos_cache = {}
 
     # Title - Handle both dict and object access
     is_dict = isinstance(planificacion_data, dict)
@@ -70,7 +74,8 @@ def generate_planificacion_pdf(planificacion_data):
         story.append(Spacer(1, 0.15*inch))
 
         # Visits Table
-        visitas_data = [[Paragraph("<b>Hora</b>", small_style), 
+        visitas_data = [[Paragraph("<b>Hmin.</b>", small_style),
+                         Paragraph("<b>Hora</b>", small_style), 
                          Paragraph("<b>HMax.</b>", small_style), 
                          Paragraph("<b>Acción</b>", small_style),
                          Paragraph("<b>Dirección / Lugar</b>", small_style),
@@ -84,22 +89,47 @@ def generate_planificacion_pdf(planificacion_data):
         
         for visita in visitas:
             hora_calculada_de_llegada = format_time(getattr(visita, 'hora_calculada_de_llegada', None))
-            hora_pedida = format_time(getattr(visita, 'hora_pedida', None))
-
+            hora_pedida = getattr(visita, 'hora_pedida', None)
+            tolerancia = getattr(visita, 'tolerancia', 0)  # Default to 0 if not set
+            # Calculate hmin and hmax based on hora_pedida and tolerance
+            hmin = None
+            hmax = None
+            if hora_pedida:
+                # Convert hora_pedida to datetime for calculations
+                hora_pedida_dt = datetime.combine(datetime.today(), hora_pedida)
+                
+                # Calculate time window with tolerance (in minutes)
+                hora_con_tolerancia_dt = hora_pedida_dt + timedelta(minutes=tolerancia)
+                
+                # Determine which is min and which is max
+                if tolerancia >= 0:
+                    hmin = hora_pedida_dt.time()
+                    hmax = hora_con_tolerancia_dt.time()
+                else:
+                    hmin = hora_con_tolerancia_dt.time()
+                    hmax = hora_pedida_dt.time()
             direccion = ""
             accion = ""
             contacto = "N/A"  # Default contact info
             tipo_item = getattr(visita, 'tipo_item', None)
-            item = getattr(visita, 'item', None)
-            
             if tipo_item == model.TipoItemVisita.parada:
+                item = getattr(visita, 'parada', None)
                 direccion = getattr(item, 'direccion', 'Parada no encontrada') if item else 'Parada no encontrada'
                 
-                # Get client info
-                pedido = getattr(item, 'pedido', None)
+                id_pedido = getattr(item, 'id_pedido', None)
+                pedido = None
                 cliente = None
-                if pedido:
-                    cliente = getattr(pedido, 'cliente', None)
+                if id_pedido:
+                    # Check cache first
+                    if id_pedido in pedidos_cache:
+                        pedido = pedidos_cache[id_pedido]
+                    else:
+                        # Get from database and cache it
+                        pedido = get_pedido_and_cliente_db(id_pedido)
+                        pedidos_cache[id_pedido] = pedido
+                    
+                    if pedido:
+                        cliente = getattr(pedido, 'cliente', None)
                 
                 if cliente:
                     nombre = getattr(cliente, 'nombre', '')
@@ -148,8 +178,9 @@ def generate_planificacion_pdf(planificacion_data):
                     accion = "No especificado"
             
             elif tipo_item == model.TipoItemVisita.lugar_comun:
+                item = getattr(visita, 'lugar_comun', None)
                 direccion = getattr(item, 'nombre', 'Lugar común no encontrado') if item else 'Lugar común no encontrado'
-                
+                direccion += f"<br/> ({getattr(item, 'direccion', 'Sin dirección')})" if item else ''
                 # Determine if it's start or end based on position in route
                 if visitas.index(visita) == 0:
                     accion = "Comienzo"
@@ -161,11 +192,14 @@ def generate_planificacion_pdf(planificacion_data):
                 direccion = "Tipo de item desconocido"  
                 accion = "Acción desconocida"
 
-            visitas_data.append([Paragraph(hora_calculada_de_llegada, small_style),
-                                 Paragraph(hora_pedida, small_style),
-                                Paragraph(accion, small_style),
-                                Paragraph(direccion, small_style),
-                                Paragraph(contacto, small_style)])
+            visitas_data.append([
+                Paragraph(format_time(hmin) if hmin else "---", small_style),
+                Paragraph(hora_calculada_de_llegada, small_style),
+                Paragraph(format_time(hmax) if hmax else "---", small_style),
+                Paragraph(accion, small_style),
+                Paragraph(direccion, small_style),
+                Paragraph(contacto, small_style)
+            ])
 
         # Add driver's rest period if available
         descanso_inicio = getattr(ruta, 'descanso_inicio', None)
@@ -178,17 +212,18 @@ def generate_planificacion_pdf(planificacion_data):
             
             # Create rest period row with coffee emoji
             rest_row = [
+                Paragraph("---", small_style),  # Empty cell for Hmin
                 Paragraph(descanso_inicio_str, small_style),
-                Paragraph("", small_style),  # Empty cell for hora_pedida
+                Paragraph("---", small_style),  # Empty cell for HMax
                 Paragraph("Descanso del conductor", small_style),
                 Paragraph(f"Duración: {descanso_inicio_str} - {descanso_fin_str}", small_style),
-                Paragraph("", small_style)
+                Paragraph("---", small_style)
             ]
             
             # Find the correct position to insert the rest period based on time
             inserted = False
             for i in range(1, len(visitas_data)):
-                visita_hora_str = visitas_data[i][0].text
+                visita_hora_str = visitas_data[i][1].text
                 log.info(f"Comparing rest start {descanso_inicio_str} with visit time {visita_hora_str}")
                 # Convert string times to datetime.time objects for comparison
                 try:
@@ -209,8 +244,8 @@ def generate_planificacion_pdf(planificacion_data):
                 visitas_data.append(rest_row)
         
         if len(visitas_data) > 1:
-            # Adjust column widths to fit all 5 columns
-            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 0.5*inch, 2.5*inch, 2.5*inch, 1.5*inch])
+            # Adjust column widths to fit all 6 columns
+            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 0.5*inch, 0.5*inch, 2.0*inch, 2.0*inch, 1.5*inch])
             visitas_table.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.grey),
                 ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
@@ -220,15 +255,15 @@ def generate_planificacion_pdf(planificacion_data):
                 ('BOTTOMPADDING', (0,0), (-1,0), 12),
                 ('BACKGROUND', (0,1), (-1,-1), colors.beige),
                 ('GRID', (0,0), (-1,-1), 1, colors.black),
-                ('ALIGN', (1,1), (2,-1), 'LEFT'), # Align address and action columns to the left
-                ('LEFTPADDING', (1,1), (2,-1), 6),
+                ('ALIGN', (2,1), (3,-1), 'LEFT'), # Align address and action columns to the left
+                ('LEFTPADDING', (2,1), (3,-1), 6),
             ]))
             
             # Add special styling for the rest period row if it exists
             if descanso_inicio and descanso_fin:
                 # Find the rest row index
                 for i in range(1, len(visitas_data)):
-                    if "Descanso del conductor" in visitas_data[i][1].text:
+                    if "Descanso del conductor" in visitas_data[i][3].text:
                         # Apply special background color for the rest period row
                         visitas_table.setStyle(TableStyle([
                             ('BACKGROUND', (0,i), (-1,i), colors.wheat),
@@ -243,7 +278,7 @@ def generate_planificacion_pdf(planificacion_data):
         story.append(Spacer(1, 0.3*inch))
 
     # Add section for unattended rides (pedidos_no_atendidos)
-    pedidos_no_atendidos = planificacion_data.get('pedidos_no_atendidos', []) if is_dict else getattr(planificacion_data, 'pedidos_no_atendidos', [])
+    pedidos_no_atendidos = planificacion_data.get('pedidos_no_atendidos_procesados', []) if is_dict else getattr(planificacion_data, 'pedidos_no_atendidos_procesados', [])
     
     # Add a page break before the unattended rides section
     story.append(PageBreak())
@@ -270,7 +305,7 @@ def generate_planificacion_pdf(planificacion_data):
             dropped_data = [[
                 Paragraph("<b>ID Pedido</b>", small_style),
                 Paragraph("<b>Cliente</b>", small_style),
-                Paragraph("<b>Características</b>", small_style),
+                Paragraph("<b>Contacto Usuario</b>", small_style),
                 Paragraph("<b>Direcciones</b>", small_style)
             ]]
             
@@ -279,7 +314,7 @@ def generate_planificacion_pdf(planificacion_data):
                 # Get client info
                 cliente = getattr(pedido, 'cliente', None)
                 cliente_info = "No disponible"
-                caracteristicas_info = "Ninguna"
+                contacto_info = "N/A"
                 
                 if cliente:
                     nombre = getattr(cliente, 'nombre', '')
@@ -287,11 +322,14 @@ def generate_planificacion_pdf(planificacion_data):
                     documento = getattr(cliente, 'documento', '')
                     cliente_info = f"{nombre} {apellido} (Doc: {documento})"
                     
-                    # Get client characteristics
-                    caracteristicas = getattr(cliente, 'caracteristicas', [])
-                    if caracteristicas:
-                        caracteristicas_names = [getattr(c, 'nombre', '') for c in caracteristicas]
-                        caracteristicas_info = ", ".join(caracteristicas_names)
+                    # Get client contact information
+                    telefono = getattr(cliente, 'telefono', None)
+                    email = getattr(cliente, 'email', None)
+                    
+                    if telefono:
+                        contacto_info = f"tel: {telefono}"
+                    elif email:
+                        contacto_info = f"mail: {email}"
                 
                 # Get paradas info
                 paradas = getattr(pedido, 'paradas', [])
@@ -305,7 +343,7 @@ def generate_planificacion_pdf(planificacion_data):
                 dropped_data.append([
                     Paragraph(str(getattr(pedido, 'id', 'N/A')), small_style),
                     Paragraph(cliente_info, small_style),
-                    Paragraph(caracteristicas_info, small_style),
+                    Paragraph(contacto_info, small_style),
                     Paragraph(paradas_info, small_style)
                 ])
             
@@ -496,7 +534,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
     from reportlab.lib import colors as report_colors
 
     general_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), report_colors.darkblue),
+        ('BACKGROUND', (0,0), (-1,0), report_colors.dodgerblue),
         ('TEXTCOLOR', (0,0), (-1,0), report_colors.whitesmoke),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
@@ -524,7 +562,7 @@ def generate_estadisticas_pdf(planificaciones, start_date, end_date):
 
 
         tipos_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), report_colors.darkblue),
+            ('BACKGROUND', (0,0), (-1,0), report_colors.dodgerblue),
             ('TEXTCOLOR', (0,0), (-1,0), report_colors.whitesmoke),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
