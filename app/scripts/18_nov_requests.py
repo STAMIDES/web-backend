@@ -72,8 +72,8 @@ REQUESTS = [
         {"pos": 2, "coords": (None, None), "direction": " BATLLE Y ORDOÑEZ 2462", "coords": (-34.8842043,-56.1409093), "ventana_inicio": "16:00", "ventana_fin": None},
     ]},
     {"anon_id": "Usuario_20", "tipo": "solo_ida", "name": "Néstor Hernández", "paradas": [
-        {"pos": 1, "coords": (None, None), "direction": "MAR DEL PLATA ", "coords": (-34.8862235,-56.049549), "ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "TEOFILO DIAZ 1624", "coords": (-34.8124901,-56.2242052),    "ventana_inicio": "18:00", "ventana_fin": None},
+        {"pos": 1, "coords": (None, None), "direction": "MAR DEL PLATA ", "coords": (-34.8862235,-56.049549), "ventana_inicio": "18:00",   "ventana_fin": None},
+        {"pos": 2, "coords": (None, None), "direction": "TEOFILO DIAZ 1624", "coords": (-34.8124901,-56.2242052),    "ventana_inicio": None, "ventana_fin": None},
     ]},
     # Ida y vuelta entries:
 
