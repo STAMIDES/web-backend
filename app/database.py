@@ -1756,6 +1756,7 @@ class Visitas(Base):
     estado = Column(SQLAEnum(m.EstadoVisita), nullable=False)
     hora_calculada_de_llegada = Column(Time, nullable=False)
     hora_pedida = Column(Time)
+    tolerancia = Column(Integer, default=0)
     observaciones = Column(String)
     ruta = relationship('Rutas', back_populates='visitas')
     parada = relationship('Paradas', foreign_keys=[id_item], primaryjoin="and_(Visitas.id_item == Paradas.id, Visitas.tipo_item == 'Parada')")
@@ -1769,7 +1770,11 @@ def add_visita_db(visita, db=None):
         should_close = True
     
     try:
-        visita_obj = Visitas(**visita.dict())
+        visita_dict = visita.dict()
+        # Set default tolerancia if not provided
+        if 'tolerancia' not in visita_dict:
+            visita_dict['tolerancia'] = 0
+        visita_obj = Visitas(**visita_dict)
         db.add(visita_obj)
         if should_close:
             db.commit()
@@ -1796,7 +1801,8 @@ def get_visitas_by_ruta_db(id_ruta):
 
 def update_visita_db(id_visita, visita):
     with get_db() as db:
-        db.query(Visitas).filter(Visitas.id_visita == id_visita).update(visita.dict())
+        update_data = visita.dict(exclude_unset=True)
+        db.query(Visitas).filter(Visitas.id == id_visita).update(update_data)
         db.commit()
         return visita
     

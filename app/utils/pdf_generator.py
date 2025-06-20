@@ -74,7 +74,8 @@ def generate_planificacion_pdf(planificacion_data):
         story.append(Spacer(1, 0.15*inch))
 
         # Visits Table
-        visitas_data = [[Paragraph("<b>Hora</b>", small_style), 
+        visitas_data = [[Paragraph("<b>Hmin.</b>", small_style),
+                         Paragraph("<b>Hora</b>", small_style), 
                          Paragraph("<b>HMax.</b>", small_style), 
                          Paragraph("<b>Acción</b>", small_style),
                          Paragraph("<b>Dirección / Lugar</b>", small_style),
@@ -88,8 +89,25 @@ def generate_planificacion_pdf(planificacion_data):
         
         for visita in visitas:
             hora_calculada_de_llegada = format_time(getattr(visita, 'hora_calculada_de_llegada', None))
-            hora_pedida = format_time(getattr(visita, 'hora_pedida', None))
-
+            hora_pedida = getattr(visita, 'hora_pedida', None)
+            tolerancia = getattr(visita, 'tolerancia', 0)  # Default to 0 if not set
+            # Calculate hmin and hmax based on hora_pedida and tolerance
+            hmin = None
+            hmax = None
+            if hora_pedida:
+                # Convert hora_pedida to datetime for calculations
+                hora_pedida_dt = datetime.combine(datetime.today(), hora_pedida)
+                
+                # Calculate time window with tolerance (in minutes)
+                hora_con_tolerancia_dt = hora_pedida_dt + timedelta(minutes=tolerancia)
+                
+                # Determine which is min and which is max
+                if tolerancia >= 0:
+                    hmin = hora_pedida_dt.time()
+                    hmax = hora_con_tolerancia_dt.time()
+                else:
+                    hmin = hora_con_tolerancia_dt.time()
+                    hmax = hora_pedida_dt.time()
             direccion = ""
             accion = ""
             contacto = "N/A"  # Default contact info
@@ -174,11 +192,14 @@ def generate_planificacion_pdf(planificacion_data):
                 direccion = "Tipo de item desconocido"  
                 accion = "Acción desconocida"
 
-            visitas_data.append([Paragraph(hora_calculada_de_llegada, small_style),
-                                 Paragraph(hora_pedida, small_style),
-                                Paragraph(accion, small_style),
-                                Paragraph(direccion, small_style),
-                                Paragraph(contacto, small_style)])
+            visitas_data.append([
+                Paragraph(format_time(hmin) if hmin else "---", small_style),
+                Paragraph(hora_calculada_de_llegada, small_style),
+                Paragraph(format_time(hmax) if hmax else "---", small_style),
+                Paragraph(accion, small_style),
+                Paragraph(direccion, small_style),
+                Paragraph(contacto, small_style)
+            ])
 
         # Add driver's rest period if available
         descanso_inicio = getattr(ruta, 'descanso_inicio', None)
@@ -191,8 +212,9 @@ def generate_planificacion_pdf(planificacion_data):
             
             # Create rest period row with coffee emoji
             rest_row = [
+                Paragraph("---", small_style),  # Empty cell for Hmin
                 Paragraph(descanso_inicio_str, small_style),
-                Paragraph("---", small_style),  # Empty cell for hora_pedida
+                Paragraph("---", small_style),  # Empty cell for HMax
                 Paragraph("Descanso del conductor", small_style),
                 Paragraph(f"Duración: {descanso_inicio_str} - {descanso_fin_str}", small_style),
                 Paragraph("---", small_style)
@@ -201,7 +223,7 @@ def generate_planificacion_pdf(planificacion_data):
             # Find the correct position to insert the rest period based on time
             inserted = False
             for i in range(1, len(visitas_data)):
-                visita_hora_str = visitas_data[i][0].text
+                visita_hora_str = visitas_data[i][1].text
                 log.info(f"Comparing rest start {descanso_inicio_str} with visit time {visita_hora_str}")
                 # Convert string times to datetime.time objects for comparison
                 try:
@@ -222,8 +244,8 @@ def generate_planificacion_pdf(planificacion_data):
                 visitas_data.append(rest_row)
         
         if len(visitas_data) > 1:
-            # Adjust column widths to fit all 5 columns
-            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 0.5*inch, 2.5*inch, 2.5*inch, 1.5*inch])
+            # Adjust column widths to fit all 6 columns
+            visitas_table = Table(visitas_data, colWidths=[0.5*inch, 0.5*inch, 0.5*inch, 2.0*inch, 2.0*inch, 1.5*inch])
             visitas_table.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.grey),
                 ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
@@ -233,15 +255,15 @@ def generate_planificacion_pdf(planificacion_data):
                 ('BOTTOMPADDING', (0,0), (-1,0), 12),
                 ('BACKGROUND', (0,1), (-1,-1), colors.beige),
                 ('GRID', (0,0), (-1,-1), 1, colors.black),
-                ('ALIGN', (1,1), (2,-1), 'LEFT'), # Align address and action columns to the left
-                ('LEFTPADDING', (1,1), (2,-1), 6),
+                ('ALIGN', (2,1), (3,-1), 'LEFT'), # Align address and action columns to the left
+                ('LEFTPADDING', (2,1), (3,-1), 6),
             ]))
             
             # Add special styling for the rest period row if it exists
             if descanso_inicio and descanso_fin:
                 # Find the rest row index
                 for i in range(1, len(visitas_data)):
-                    if "Descanso del conductor" in visitas_data[i][1].text:
+                    if "Descanso del conductor" in visitas_data[i][3].text:
                         # Apply special background color for the rest period row
                         visitas_table.setStyle(TableStyle([
                             ('BACKGROUND', (0,i), (-1,i), colors.wheat),

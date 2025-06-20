@@ -158,6 +158,7 @@ class Visitas(BaseModel):
     hora_calculada_de_llegada: time
     hora_pedida: Optional[time] = None
     estado: EstadoVisita = EstadoVisita.pendiente
+    tolerancia: int = 0  # Tolerancia en minutos, 0 si no se aplica
     observaciones: Optional[str] = None
 
 # Una ruta pertece a una planificación y tiene un vehículo asignado, puede pertenecer a varios turnos y tiene un chofer por turno
@@ -256,7 +257,7 @@ class VisitaSchema(BaseModel):
     # Los obtenemos del objeto SQLAlchemy usando un alias.
     parada: Optional[ParadaSchema] = Field(None, exclude=True)
     lugar_comun: Optional[LugarComunSchema] = Field(None, exclude=True)
-    
+    tolerancia: int
     # El campo que SÍ queremos en el JSON final.
     item: Optional[Union[ParadaSchema, LugarComunSchema]] = None
 
