@@ -191,12 +191,22 @@ def logout(refresh_token: str):
 
 def is_refresh_token_valid(user_id: int, refresh_token: str):
     with get_db() as db:
-        token = db.query(RefreshToken).filter(
-            RefreshToken.user_id == user_id,
-            RefreshToken.token == refresh_token,
-            RefreshToken.is_revoked == False
-        ).first()
-        return token is not None
+        try:
+            token = db.query(RefreshToken).filter(
+                RefreshToken.user_id == user_id,
+                RefreshToken.token == refresh_token,
+                RefreshToken.is_revoked == False,
+                RefreshToken.expires_at > datetime.utcnow()  # Also check expiration
+            ).first()
+            
+            is_valid = token is not None
+            if not is_valid:
+                log.warning(f"Refresh token validation failed for user_id: {user_id}")
+            
+            return is_valid
+        except Exception as e:
+            log.error(f"Error validating refresh token: {e}")
+            return False
     
 
 
