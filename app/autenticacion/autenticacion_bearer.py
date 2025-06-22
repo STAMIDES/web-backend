@@ -12,11 +12,11 @@ class JWTBearer(HTTPBearer):
         access_token = request.cookies.get("access_token")
         
         if not access_token:
-            raise HTTPException(status_code=403, detail="Not authenticated")
+            raise HTTPException(status_code=401, detail="Access token not found")
         
         try:
             payload = validate_token(access_token)
             request.state.user_email = payload.get("sub")
             return payload
         except Exception as e:
-            raise HTTPException(status_code=403, detail="Invalid token or expired token")
+            raise HTTPException(status_code=401, detail="Invalid or expired access token")

@@ -158,35 +158,61 @@ def login(request: LoginRequest, response: Response):
     
 @usuarios_router.post("/logout/refresh")
 def refresh_token(request: Request, response: Response):
-    refresh_token = request.cookies.get("refresh_token")
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    try:
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            log.warning("No refresh token found in cookies")
+            # Clear any existing cookies and return clear error
+            response.delete_cookie(key="access_token")
+            response.delete_cookie(key="refresh_token", path='/usuarios/logout')
+            raise HTTPException(status_code=401, detail="No refresh token provided")
+        
+        # Validate the refresh token structure first
+        try:
+            payload = aut.validate_token(refresh_token)
+        except Exception as e:
+            log.warning(f"Invalid refresh token structure: {e}")
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+        
+        user_email = payload.get("sub")
+        user_id = payload.get("user_id")
+        
+        if not user_email or not user_id:
+            log.warning("Refresh token missing required claims")
+            raise HTTPException(status_code=401, detail="Invalid refresh token claims")
+        
+        user = db.get_user_by_email(user_email)
+        if not user:
+            log.warning(f"User not found for email: {user_email}")
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        # Check if the refresh token is valid in the database
+        if not db.is_refresh_token_valid(user.id, refresh_token):
+            log.warning(f"Refresh token not valid in database for user: {user_email}")
+            raise HTTPException(status_code=401, detail="Refresh token is not valid")
+        
+        # Generate new access token
+        new_access_token = aut.create_access_token(data={"sub": user_email, "user_id": user.id})
+        
+        response.set_cookie(
+            key="access_token",
+            value=new_access_token,
+            httponly=True,
+            secure=True,
+            samesite='lax',
+            max_age=24*3600  # 1 day
+        )
+        
+        log.info(f"Token refreshed successfully for user: {user_email}")
+        return {"message": "Token refreshed successfully"}
     
-    payload = aut.validate_token(refresh_token)
-    
-    user_email = payload.get("sub")
-    user = db.get_user_by_email(user_email)
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-    # Check if the refresh token is valid in the database
-    if not db.is_refresh_token_valid(user.id, refresh_token):
-        raise HTTPException(status_code=401, detail="Refresh token is not valid")
-    
-    # Generate new access token
-    new_access_token = aut.create_access_token(data={"sub": user_email, "user_id": user.id})
-    
-    response.set_cookie(
-        key="access_token",
-        value=new_access_token,
-        httponly=True,
-        secure=True,
-        samesite='lax',
-        max_age=24*3600  # 1 day
-    )
-    
-    return {"message": "Token refreshed successfully"}
-    
+    except HTTPException as e:
+        # Re-raise HTTP exceptions as-is
+        raise e
+    except Exception as e:
+        log.error(f"Unexpected error during token refresh: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="Internal server error during token refresh")
+
 @usuarios_router.post("/logout", dependencies=[Depends(JWTBearer())])
 def logout(request: Request, response: Response):
     try:
