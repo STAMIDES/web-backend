@@ -364,7 +364,7 @@ def get_clientes_caracteristica(caracteristica: str, limit: int = 100, offset: i
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@clientes_router.post("/", dependencies=[Depends(JWTBearer())])
+@clientes_router.post("", dependencies=[Depends(JWTBearer())])
 def add_cliente(cliente: Clientes):
     try:
         if not db.get_cliente_by_doc(cliente.documento):
