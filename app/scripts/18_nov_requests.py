@@ -134,7 +134,7 @@ REQUESTS = [
     ]},
     {"anon_id": "Usuario_14", "tipo": "ida_y_vuelta", "name": "Jorge Silvera", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "EUSEBIO CABRAL 4250", "coords": (-34.8067564,-56.1405338),"ventana_inicio": None,   "ventana_fin": None},
-        {"pos": 2, "coords": (None, None), "direction": "MAR DEL PLATA", "coords": (-34.8862235,-56.049549),  "coords": (-34.8862235,-56.049549),       "ventana_inicio": "19:00", "ventana_fin": "18:00"},
+        {"pos": 2, "coords": (None, None), "direction": "MAR DEL PLATA", "coords": (-34.8862235,-56.049549),  "coords": (-34.8862235,-56.049549),       "ventana_inicio": "08:00", "ventana_fin": "18:00"},
         {"pos": 3, "coords": (None, None), "direction": "EUSEBIO CABRAL 4250", "coords": (-34.8067564,-56.1405338),"ventana_inicio": None,   "ventana_fin": None},
     ]},
     {"anon_id": "Usuario_17", "tipo": "ida_y_vuelta", "name": "José Perovich", "paradas": [
@@ -572,6 +572,92 @@ def main():
         db.add_all(tipos)
         db.commit()
     
+    # Check if LugaresComunes entry exists, if not create it
+    deposito_camionetas = db.query(LugaresComunes).filter_by(nombre='Deposito Camionetas').first()
+    if not deposito_camionetas:
+        print("Creating Deposito Camionetas lugar común...")
+        deposito = LugaresComunes(
+            nombre='Deposito Camionetas',
+            direccion='Domingo Petrarca, Palermo, Montevideo, 11114, Uruguay',
+            latitud=-34.9134316,
+            longitud=-56.186709,
+            activo=True,
+            observaciones=None,
+            borrado=False
+        )
+        db.add(deposito)
+        db.commit()
+    
+    # Check if Vehiculos exist, if not create them
+    if db.query(Vehiculos).count() == 0:
+        print("Creating Vehiculos...")
+        vehiculos = [
+            Vehiculos(
+                matricula='SBH 9074',
+                descripcion='MERCEDES BENZ Sprinter "Microbus" (año 2009)',
+                capacidad_convencional=4,
+                capacidad_silla_de_ruedas=5,
+                activo=True,
+                observaciones=None,
+                borrado=False
+            ),
+            Vehiculos(
+                matricula='SBH 2740',
+                descripcion='PEUGEOT Boxer "Microbus" (año 2014)',
+                capacidad_convencional=4,
+                capacidad_silla_de_ruedas=5,
+                activo=True,
+                observaciones=None,
+                borrado=False
+            ),
+            Vehiculos(
+                matricula='SCQ 4726',
+                descripcion='MERCEDES BENZ Sprinter "Microbus" (año 2020)',
+                capacidad_convencional=4,
+                capacidad_silla_de_ruedas=5,
+                activo=True,
+                observaciones=None,
+                borrado=False
+            )
+        ]
+        db.add_all(vehiculos)
+        db.commit()
+    
+    # Check if Choferes exist, if not create them
+    if db.query(Choferes).count() == 0:
+        print("Creating Choferes...")
+        choferes = [
+            Choferes(
+                documento=37966694,
+                nombre='chofer_1',
+                apellido='apellido_chofer_1',
+                telefono='098333333',
+                activo=True,
+                observaciones=None,
+                borrado=False
+            ),
+            Choferes(
+                documento=55555555,
+                nombre='chofer_2',
+                apellido='apellido_chofer_2',
+                telefono='09822222',
+                activo=True,
+                observaciones=None,
+                borrado=False
+            ),
+            Choferes(
+                documento=1555111,
+                nombre='chofer_3',
+                apellido='apellido_chofer_tarde_3',
+                telefono='09811111',
+                activo=True,
+                observaciones=None,
+                borrado=False
+            )
+        ]
+        db.add_all(choferes)
+        db.commit()
+    
     # Process regular requests
     print("Processing regular requests...")
     process_requests(NAME_ALIAS_LIST, REQUESTS, db)
@@ -620,6 +706,92 @@ def interactive_main():
                 TiposParadas(nombre='Mides')
             ]
             db.add_all(tipos)
+            db.commit()
+        
+        # Check if LugaresComunes entry exists, if not create it
+        deposito_camionetas = db.query(LugaresComunes).filter_by(nombre='Deposito Camionetas').first()
+        if not deposito_camionetas:
+            print("Creating Deposito Camionetas lugar común...")
+            deposito = LugaresComunes(
+                nombre='Deposito Camionetas',
+                direccion='Domingo Petrarca, Palermo, Montevideo, 11114, Uruguay',
+                latitud=-34.9134316,
+                longitud=-56.186709,
+                activo=True,
+                observaciones=None,
+                borrado=False
+            )
+            db.add(deposito)
+            db.commit()
+        
+        # Check if Vehiculos exist, if not create them
+        if db.query(Vehiculos).count() == 0:
+            print("Creating Vehiculos...")
+            vehiculos = [
+                Vehiculos(
+                    matricula='SBH 9074',
+                    descripcion='MERCEDES BENZ Sprinter "Microbus" (año 2009)',
+                    capacidad_convencional=4,
+                    capacidad_silla_de_ruedas=5,
+                    activo=True,
+                    observaciones=None,
+                    borrado=False
+                ),
+                Vehiculos(
+                    matricula='SBH 2740',
+                    descripcion='PEUGEOT Boxer "Microbus" (año 2014)',
+                    capacidad_convencional=4,
+                    capacidad_silla_de_ruedas=5,
+                    activo=True,
+                    observaciones=None,
+                    borrado=False
+                ),
+                Vehiculos(
+                    matricula='SCQ 4726',
+                    descripcion='MERCEDES BENZ Sprinter "Microbus" (año 2020)',
+                    capacidad_convencional=4,
+                    capacidad_silla_de_ruedas=5,
+                    activo=True,
+                    observaciones=None,
+                    borrado=False
+                )
+            ]
+            db.add_all(vehiculos)
+            db.commit()
+        
+        # Check if Choferes exist, if not create them
+        if db.query(Choferes).count() == 0:
+            print("Creating Choferes...")
+            choferes = [
+                Choferes(
+                    documento=37966694,
+                    nombre='chofer_1',
+                    apellido='apellido_chofer_1',
+                    telefono='09811111',
+                    activo=True,
+                    observaciones=None,
+                    borrado=False
+                ),
+                Choferes(
+                    documento=55555555,
+                    nombre='chofer_2',
+                    apellido='apellido_chofer_2',
+                    telefono='098555555',
+                    activo=True,
+                    observaciones=None,
+                    borrado=False
+                ),
+                Choferes(
+                    documento=1555111,
+                    nombre='chofer_3',
+                    apellido='apellido_chofer_tarde_3',
+                    telefono='098333333',
+                    activo=True,
+                    observaciones=None,
+                    borrado=False
+                )
+            ]
+            db.add_all(choferes)
             db.commit()
         
         # Process with database operations
