@@ -71,7 +71,7 @@ REQUESTS = [
         {"pos": 1, "coords": (None, None), "direction": "ESCUELA ROOSEVELT", "coords": (-34.84776542, -56.1993598),         "ventana_inicio": None,   "ventana_fin": None},
         {"pos": 2, "coords": (None, None), "direction": " BATLLE Y ORDOÑEZ 2462", "coords": (-34.8842043,-56.1409093), "ventana_inicio": "16:00", "ventana_fin": None},
     ]},
-    {"anon_id": "Usuario_20", "tipo": "solo_ida", "name": "Néstor Hernández", "paradas": [
+    {"anon_id": "Usuario_20", "tipo": "solo_vuelta", "name": "Néstor Hernández", "paradas": [
         {"pos": 1, "coords": (None, None), "direction": "MAR DEL PLATA ", "coords": (-34.8862235,-56.049549), "ventana_inicio": "18:00",   "ventana_fin": None},
         {"pos": 2, "coords": (None, None), "direction": "TEOFILO DIAZ 1624", "coords": (-34.8124901,-56.2242052),    "ventana_inicio": None, "ventana_fin": None},
     ]},
@@ -268,7 +268,7 @@ def process_requests(name_alias_list, requests_list, db_session):
                 pedido = Pedidos(
                     cliente_documento=documento,
                     prioridad=0,
-                    acompañante=random.choice([True, False]),
+                    acompañante=False,
                     tipo=p['tipo'],
                     fecha_programado=datetime.strptime('2025-11-18', '%Y-%m-%d').date(),
                     observaciones=f"Request for {c['name']}"
