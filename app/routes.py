@@ -138,7 +138,7 @@ def login(request: LoginRequest, response: Response):
             httponly=True,
             secure=True,
             samesite='lax',
-            max_age=24*3600  # 1 day
+            max_age=aut.ACCESS_TOKEN_EXPIRE_MINUTES
         )
         response.set_cookie(
             key="refresh_token", 
@@ -147,13 +147,16 @@ def login(request: LoginRequest, response: Response):
             httponly=True,
             secure=True,
             samesite='lax',
-            max_age=6*31*24*3600  # 6 months
+            max_age=aut.REFRESH_TOKEN_EXPIRE_DAYS
         )
         
         return {"message": "Login successful"}
     except HTTPException as e:
+        log.info(traceback.format_exc())
+
         raise e
     except Exception as e:
+        log.info(traceback.format_exc())
         raise HTTPException(status_code=401, detail=e.args[0] if e.args else "Usuario o contraseña incorrectos")
     
 @usuarios_router.post("/logout/refresh")
@@ -200,7 +203,7 @@ def refresh_token(request: Request, response: Response):
             httponly=True,
             secure=True,
             samesite='lax',
-            max_age=24*3600  # 1 day
+            max_age=aut.ACCESS_TOKEN_EXPIRE_MINUTES
         )
         
         log.info(f"Token refreshed successfully for user: {user_email}")
@@ -672,7 +675,7 @@ def get_vehiculos_activos(activo: bool, limit: int = 100, offset: int = 0):
         log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=e.args[0] if e.args else "Error interno del servidor")
 
-@vehiculos_router.post("/", dependencies=[Depends(JWTBearer())])
+@vehiculos_router.post("", dependencies=[Depends(JWTBearer())])
 def add_vehiculo(vehiculo: Vehiculos):
     try:
         db.add_vehiculo_db(vehiculo)
