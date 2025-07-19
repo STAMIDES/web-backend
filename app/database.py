@@ -22,7 +22,13 @@ from sqlalchemy import CheckConstraint # type: ignore
 
 import autenticacion.autenticacion as aut
 
-SQLALCHEMY_DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
+DB_HOST = os.getenv("POSTGRES_HOST")
+DB_PORT = os.getenv("POSTGRES_PORT")
+DB_USER = os.getenv("POSTGRES_USER")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+DB_NAME = os.getenv("POSTGRES_DB")
+
+SQLALCHEMY_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 dominio_frontend=os.getenv('DOMINIO_FRONTEND')
 

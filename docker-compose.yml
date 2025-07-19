@@ -15,12 +15,15 @@ services:
       - 8001:8001
       - 12345:12345
     depends_on:
-      - db   
+      db:
+        condition: service_healthy
     volumes:
       - ./app:/app
+    env_file:
+      - .env
     environment:
-      - POSTGRES_HOST=db 
       - WATCHFILES_FORCE_POLLING=true
+      - SKIP_MIGRATIONS=true
     networks:
       - backend-network
 
@@ -29,17 +32,14 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db      # Si tu aplicación depende de PostgreSQL
-    environment:
-      - POSTGRES_HOST=db
-      - SENDER_EMAIL=${SENDER_EMAIL}
-      - SENDER_PASSWORD=${SENDER_PASSWORD}
-      - SENDER_APP_PASSWORD=${SENDER_APP_PASSWORD}
-      - DOMINIO_FRONTEND=localhost:5173 # TODO: CAMBIAR EN PRODUCCION
+      db:
+        condition: service_healthy
     networks:
       - backend-network
     volumes:
       - ./app:/app
+    env_file:
+      - .env
 
   db:
     image: postgres:latest
@@ -47,16 +47,19 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile-db
-    environment:
-      POSTGRES_USER: fernando
-      POSTGRES_PASSWORD: 123123123
-      POSTGRES_DB: mides
     ports:
       - "5432:5432"
     networks:
       - backend-network
     volumes:
       - db-volume:/db
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 networks:
   backend-network:
