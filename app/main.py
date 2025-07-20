@@ -25,22 +25,15 @@ logger.addHandler(file_handler)
 
 
 
-origins = [
-    "http://localhost:5174",
-    "http://localhost:5173"  
-]
 
-app = FastAPI(debug = True)
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-#TODO remover esto??
-Base.metadata.create_all(bind=db.engine) # En producción hay que sacar esto de acá
-#TODO remover esto??
 
 app.include_router(r.clientes_router, prefix="/clientes")
 app.include_router(r.caracteristicas_router, prefix="/caracteristicas")
