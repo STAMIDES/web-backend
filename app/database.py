@@ -35,8 +35,11 @@ dominio_frontend=os.getenv('DOMINIO_FRONTEND')
 INVITATION_SUBJECT_TEMPLATE = "Invitación al Sistema de Servicio de transporte accesible"
 INVITATION_BODY_TEMPLATE = f""" Hola {{nombre_usuario}}, 
 Felicidades has sido invitado a ser un usuario del Sistema de Servicio de transporte accesible, 
-ingresa aqui {dominio_frontend}/cuenta/registro/{{hash_link}} para generar una contraseña y completar tu registro."""
+ingresa aqui {dominio_frontend}/cuenta/registro/{{hash_link}} para generar una contraseña y completar tu registro.
 
+
+Nota: Recuerda estar usando la red interna de Mides para que el enlace funcione correctamente.
+"""
 
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
