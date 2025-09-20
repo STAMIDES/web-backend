@@ -11,6 +11,11 @@ import time
 from shapely.geometry import Point, shape, Polygon
 import json
 import pickle
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -22,7 +27,12 @@ import models as m
 fake = Faker()
 
 # Database connection
-DATABASE_URL = 'postgresql://fernando:123123123@db:5432/mides'
+POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
+POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
+POSTGRES_USER = os.getenv('POSTGRES_USER', 'postgres')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+POSTGRES_DB = os.getenv('POSTGRES_DB', 'postgres')
+DATABASE_URL = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
